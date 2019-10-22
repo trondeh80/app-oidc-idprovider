@@ -8,9 +8,20 @@
       <default>https://accounts.google.com/o/oauth2/v2/auth</default>
       <occurrences minimum="1" maximum="1"/>
     </input>
+    <input name="tokenUrl" type="TextLine">
+      <label>Token endpoint URL</label>
+      <help-text>Token endpoint URL of the authorization server</help-text>
+      <default>https://oauth2.googleapis.com/token</default>
+      <occurrences minimum="1" maximum="1"/>
+    </input>
     <input name="clientId" type="TextLine">
       <label>Client Identifier</label>
       <help-text>OAuth 2.0 Client Identifier</help-text>
+      <occurrences minimum="1" maximum="1"/>
+    </input>
+    <input name="clientSecret" type="TextLine">
+      <label>Client Secret</label>
+      <help-text>Client secret</help-text>
       <occurrences minimum="1" maximum="1"/>
     </input>
   </form>
