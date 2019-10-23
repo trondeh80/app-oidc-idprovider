@@ -5,6 +5,11 @@ function generateToken() {
     return Java.type('com.enonic.app.oidcidprovider.OIDCUtils').generateToken();
 }
 
+function parseJWT(jwt) {
+    const parsedJwt = Java.type('com.enonic.app.oidcidprovider.OIDCUtils').parseJWT(jwt);
+    return __.toNativeObject(parsedJwt);
+}
+
 function generateAuthorizationUrl(params) {
     const authorizationUrl = preconditions.checkParameter(params, 'authorizationUrl');
     const clientId = preconditions.checkParameter(params, 'clientId');
@@ -22,7 +27,7 @@ function generateAuthorizationUrl(params) {
            + '&nonce=' + nonce;
 }
 
-function requestToken(params) {
+function requestIDToken(params) {
     const tokenUrl = preconditions.checkParameter(params, 'tokenUrl');
     const code = preconditions.checkParameter(params, 'code');
     const redirectUri = preconditions.checkParameter(params, 'redirectUri');
@@ -51,9 +56,23 @@ function requestToken(params) {
     const response = httpClient.request(request);
     log.debug('Received token response: ' + JSON.stringify(response));
 
-    throw 'TODO';
+    if (response.status !== 200) {
+        throw 'Error ' + response.status + ' while retrieving the ID Token';
+    }
+
+    const responseBody = JSON.parse(response.body);
+
+    if (responseBody.error) {
+        throw 'Token error [' + params.error + ']' + (params.error_description ? ': ' + params.error_description : '');
+    }
+
+    const idToken = parseJWT(responseBody.id_token);
+
+    //TODO Validate token
+
+    return idToken;
 }
 
 exports.generateToken = generateToken;
 exports.generateAuthorizationUrl = generateAuthorizationUrl;
-exports.requestToken = requestToken;
+exports.requestIDToken = requestIDToken;

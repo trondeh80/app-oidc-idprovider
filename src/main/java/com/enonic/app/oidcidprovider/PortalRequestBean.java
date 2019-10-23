@@ -3,6 +3,7 @@ package com.enonic.app.oidcidprovider;
 
 import javax.servlet.http.HttpSession;
 
+import com.enonic.app.oidcidprovider.mapper.ContextMapper;
 import com.enonic.xp.portal.PortalRequest;
 import com.enonic.xp.script.bean.BeanContext;
 import com.enonic.xp.script.bean.ScriptBean;
@@ -35,10 +36,10 @@ public class PortalRequestBean
         session.setAttribute( REDIRECTURI_KEY, redirectUri );
     }
 
-    public Context removeContext()
+    public ContextMapper removeContext()
     {
         final HttpSession session = portalRequest.getRawRequest().getSession( true );
-        final Context context = Context.create().
+        final ContextMapper context = ContextMapper.create().
             state( (String) session.getAttribute( STATE_KEY ) ).
             nonce( (String) session.getAttribute( NONCE_KEY ) ).
             originalUrl( (String) session.getAttribute( ORIGINALURL_KEY ) ).

@@ -1,9 +1,9 @@
-package com.enonic.app.oidcidprovider;
+package com.enonic.app.oidcidprovider.mapper;
 
 import com.enonic.xp.script.serializer.MapGenerator;
 import com.enonic.xp.script.serializer.MapSerializable;
 
-public class Context
+public class ContextMapper
     implements MapSerializable
 {
     private final String state;
@@ -14,7 +14,7 @@ public class Context
 
     private final String redirectUri;
 
-    private Context( final Builder builder )
+    private ContextMapper( final Builder builder )
     {
         state = builder.state;
         nonce = builder.nonce;
@@ -74,9 +74,9 @@ public class Context
             return this;
         }
 
-        public Context build()
+        public ContextMapper build()
         {
-            return new Context( this );
+            return new ContextMapper( this );
         }
     }
 }

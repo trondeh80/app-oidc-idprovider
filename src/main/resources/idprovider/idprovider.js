@@ -64,13 +64,17 @@ function handleAuthenticationResponse(req) {
     const code = params.code;
 
     //https://tools.ietf.org/html/rfc6749#section-2.3.1
-    oidcLib.requestToken({
+    const idToken = oidcLib.requestIDToken({
         tokenUrl: idProviderConfig.tokenUrl,
         code: code,
         redirectUri: context.redirectUri,
         clientId: idProviderConfig.clientId,
         clientSecret: idProviderConfig.clientSecret,
     });
+
+    log.debug('ID Token: ' + JSON.stringify(idToken));
+
+    throw 'TODO';
 }
 
 function getRequestParams(req, context) {

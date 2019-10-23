@@ -16,6 +16,7 @@ dependencies {
     include "com.enonic.xp:lib-auth:${xpVersion}"
     include "com.enonic.xp:lib-portal:${xpVersion}"
     include "com.enonic.lib:lib-http-client:2.0.0"
+    include "com.nimbusds:oauth2-oidc-sdk:6.16.4"
 }
 
 repositories {
