@@ -17,7 +17,7 @@ public class OIDCUtils
             toString( 32 );
     }
 
-    public static ClaimSetMapper parseJWT( final String s )
+    public static ClaimSetMapper parseClaims( final String s )
         throws ParseException
     {
         final JWTClaimsSet jwtClaimsSet = JWTParser.parse( s ).

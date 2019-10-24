@@ -1,3 +1,9 @@
+function check(predicate, message) {
+    if (!predicate) {
+        throw message;
+    }
+}
+
 function checkNotNull(value, message) {
     if (value == null) {
         throw message;
@@ -21,6 +27,7 @@ function checkConfig(params, name) {
     return value;
 }
 
+exports.check = check;
 exports.checkNotNull = checkNotNull;
 exports.checkParameter = checkParameter;
 exports.checkConfig = checkConfig;

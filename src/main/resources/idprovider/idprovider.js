@@ -1,4 +1,5 @@
 const oidcLib = require('/lib/oidc');
+const loginLib = require('/lib/login');
 const requestLib = require('/lib/request');
 const preconditions = require('/lib/preconditions');
 const authLib = require('/lib/xp/auth');
@@ -64,17 +65,21 @@ function handleAuthenticationResponse(req) {
     const code = params.code;
 
     //https://tools.ietf.org/html/rfc6749#section-2.3.1
-    const idToken = oidcLib.requestIDToken({
+    const claims = oidcLib.requestIDToken({
         tokenUrl: idProviderConfig.tokenUrl,
         code: code,
         redirectUri: context.redirectUri,
         clientId: idProviderConfig.clientId,
         clientSecret: idProviderConfig.clientSecret,
     });
+    log.debug('ID Token claims: ' + JSON.stringify(claims));
 
-    log.debug('ID Token: ' + JSON.stringify(idToken));
 
-    throw 'TODO';
+    loginLib.login(claims);
+
+    return {
+        redirect: context.originalUrl
+    };
 }
 
 function getRequestParams(req, context) {
@@ -91,6 +96,7 @@ function getRequestParams(req, context) {
     if (!params.error) {
         preconditions.checkParameter(params, 'code');
     }
+
     return params;
 }
 

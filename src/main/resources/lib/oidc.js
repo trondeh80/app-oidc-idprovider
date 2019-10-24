@@ -5,8 +5,8 @@ function generateToken() {
     return Java.type('com.enonic.app.oidcidprovider.OIDCUtils').generateToken();
 }
 
-function parseJWT(jwt) {
-    const parsedJwt = Java.type('com.enonic.app.oidcidprovider.OIDCUtils').parseJWT(jwt);
+function parseClaims(jwt) {
+    const parsedJwt = Java.type('com.enonic.app.oidcidprovider.OIDCUtils').parseClaims(jwt);
     return __.toNativeObject(parsedJwt);
 }
 
@@ -66,11 +66,10 @@ function requestIDToken(params) {
         throw 'Token error [' + params.error + ']' + (params.error_description ? ': ' + params.error_description : '');
     }
 
-    const idToken = parseJWT(responseBody.id_token);
-
     //TODO Validate token
+    const claims = parseClaims(responseBody.id_token);
 
-    return idToken;
+    return claims;
 }
 
 exports.generateToken = generateToken;
