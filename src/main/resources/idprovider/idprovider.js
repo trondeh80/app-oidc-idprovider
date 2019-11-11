@@ -1,3 +1,4 @@
+const configLib = require('/lib/config');
 const oidcLib = require('/lib/oidc');
 const loginLib = require('/lib/login');
 const requestLib = require('/lib/request');
@@ -8,7 +9,7 @@ const portalLib = require('/lib/xp/portal');
 function redirectToAuthorizationEndpoint() {
     log.debug('Handling 401 error...');
 
-    const idProviderConfig = getIdProviderConfig();
+    const idProviderConfig = configLib.getIdProviderConfig();
     const redirectUri = generateRedirectUri();
 
     const state = oidcLib.generateToken();
@@ -37,14 +38,6 @@ function redirectToAuthorizationEndpoint() {
     };
 }
 
-function getIdProviderConfig() {
-    const idProviderConfig = authLib.getIdProviderConfig();
-    preconditions.checkConfig(idProviderConfig, 'authorizationUrl');
-    preconditions.checkConfig(idProviderConfig, 'tokenUrl');
-    preconditions.checkConfig(idProviderConfig, 'clientId');
-    return idProviderConfig;
-}
-
 function generateRedirectUri() {
     var idProviderKey = portalLib.getIdProviderKey();
     return portalLib.idProviderUrl({
@@ -61,7 +54,7 @@ function handleAuthenticationResponse(req) {
         throw 'Authentication error [' + params.error + ']' + (params.error_description ? ': ' + params.error_description : '');
     }
 
-    const idProviderConfig = getIdProviderConfig();
+    const idProviderConfig = configLib.getIdProviderConfig();
     const code = params.code;
 
     //https://tools.ietf.org/html/rfc6749#section-2.3.1
@@ -100,12 +93,12 @@ function getRequestParams(req, context) {
     return params;
 }
 
-function logout() {
+function logout(req) {
     authLib.logout();
 
     var finalRedirectUrl = (req.validTicket && req.params.redirect) || generateRedirectUrl();
 
-    const config = getIdProviderConfig();
+    const config = configLib.getIdProviderConfig();
     if (config.endSessionUrl) {
         return {
             //TODO

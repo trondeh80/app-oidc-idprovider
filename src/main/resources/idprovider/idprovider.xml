@@ -30,6 +30,19 @@
       <help-text>Client secret</help-text>
       <occurrences minimum="1" maximum="1"/>
     </input>
+    <field-set>
+      <label>Groups</label>
+      <items>
+        <input name="defaultGroups" type="PrincipalSelector">
+          <label>Default groups</label>
+          <help-text>Groups associated with users upon user creation</help-text>
+          <occurrences minimum="0" maximum="0"/>
+          <config>
+            <principalType>GROUP</principalType>
+          </config>
+        </input>
+      </items>
+    </field-set>
 
   </form>
 </id-provider>

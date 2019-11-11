@@ -1,5 +1,6 @@
 const authLib = require('/lib/xp/auth');
 const contextLib = require('/lib/context');
+const configLib = require('/lib/config');
 const commonLib = require('/lib/xp/common');
 const portalLib = require('/lib/xp/portal');
 const preconditions = require('/lib/preconditions');
@@ -12,8 +13,10 @@ function login(claims) {
     const principalKey = 'user:' + idProviderKey + ':' + userName;
     const user = contextLib.runAsSu(() => authLib.getPrincipal(principalKey));
 
-    //If the user does not exist, creates it
+    //If the user does not exist
     if (!user) {
+
+        //Creates the users
         const email = preconditions.checkParameter(claims, 'email');
         preconditions.check(claims.email_verified === true, 'Email must be verified');
         const displayName = claims.preferred_username || claims.name || email;
@@ -25,6 +28,14 @@ function login(claims) {
             email: email
         }));
         log.info('User [' + user.key + '] created');
+
+        var defaultGroups = configLib.getIdProviderConfig().defaultGroups;
+        contextLib.runAsSu(() => {
+            toArray(defaultGroups).forEach(function (defaultGroup) {
+                authLib.addMembers(defaultGroup, [user.key]);
+                log.debug('User [' + user.key + '] added to group [' + defaultGroup + ']');
+            });
+        });
     }
 
     //Updates the profile
@@ -47,5 +58,15 @@ function login(claims) {
         throw 'Error while logging user [' + principalKey + ']';
     }
 }
+
+function toArray(object) {
+    if (!object) {
+        return [];
+    }
+    if (object.constructor === Array) {
+        return object;
+    }
+    return [object];
+};
 
 exports.login = login;
