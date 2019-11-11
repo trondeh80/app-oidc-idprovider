@@ -100,7 +100,37 @@ function getRequestParams(req, context) {
     return params;
 }
 
+function logout() {
+    authLib.logout();
+
+    var finalRedirectUrl = (req.validTicket && req.params.redirect) || generateRedirectUrl();
+
+    const config = getIdProviderConfig();
+    if (config.endSessionUrl) {
+        return {
+            //TODO
+            redirect: config.endSessionUrl
+        };
+    } else {
+        return {
+            redirect: finalRedirectUrl
+        };
+    }
+}
+
+
+function generateRedirectUrl() {
+    var site = portalLib.getSite();
+    if (site) {
+        return portalLib.pageUrl({
+            id: site._id
+        });
+    }
+    return '/';
+}
+
 
 exports.handle401 = redirectToAuthorizationEndpoint;
 exports.get = handleAuthenticationResponse;
+exports.logout = logout;
 
