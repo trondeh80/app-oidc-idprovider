@@ -17,8 +17,11 @@ function login(claims) {
     if (!user) {
 
         //Creates the users
+        const idProviderConfig = configLib.getIdProviderConfig();
         const email = preconditions.checkParameter(claims, 'email');
-        preconditions.check(claims.email_verified === true, 'Email must be verified');
+        if (idProviderConfig.rules && idProviderConfig.rules.forceEmailVerification) {
+            preconditions.check(claims.email_verified === true, 'Email must be verified');
+        }
         const displayName = claims.preferred_username || claims.name || email;
 
         const user = contextLib.runAsSu(() => authLib.createUser({
@@ -29,7 +32,7 @@ function login(claims) {
         }));
         log.info('User [' + user.key + '] created');
 
-        var defaultGroups = configLib.getIdProviderConfig().defaultGroups;
+        var defaultGroups = idProviderConfig.defaultGroups;
         contextLib.runAsSu(() => {
             toArray(defaultGroups).forEach(function (defaultGroup) {
                 authLib.addMembers(defaultGroup, [user.key]);

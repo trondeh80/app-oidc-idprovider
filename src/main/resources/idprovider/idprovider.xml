@@ -95,6 +95,17 @@
         </input>
       </items>
     </field-set>
+    <item-set name="rules">
+      <label>Rules</label>
+      <items>
+        <input name="forceEmailVerification" type="CheckBox">
+          <label>Force Email Verification</label>
+          <occurrences minimum="1" maximum="1"/>
+          <default>checked</default>
+        </input>
+      </items>
+      <occurrences minimum="1" maximum="1"/>
+    </item-set>
 
   </form>
 </id-provider>
