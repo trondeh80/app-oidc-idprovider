@@ -19,10 +19,10 @@ function generateAuthorizationUrl(params) {
 
     //https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
     return authorizationUrl
-           + '?scope=openid email profile'
+           + '?scope=' + encodeURIComponent('openid email profile')
            + '&response_type=code'
-           + '&client_id=' + clientId
-           + '&redirect_uri=' + redirectUri
+           + '&client_id=' + encodeURIComponent(clientId)
+           + '&redirect_uri=' + encodeURIComponent(redirectUri)
            + '&state=' + state
            + '&nonce=' + nonce;
 }

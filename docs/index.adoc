@@ -1,0 +1,89 @@
+= Open ID Connect ID Provider
+
+Authenticate your users using Open ID Connect.
+
+This ID Provider application, acting as a OIDC Relying Party. will verify the identity of End-Users based on the authentication performed by your OIDC Authorization Server.
+It will redirect unauthenticated users to the Authentication Server and obtain basic information in order to create a user within Enonic XP.
+This ID Provider application follows the Authorization Code Flow and uses the Client/Secret POST token auth method.
+
+== Releases and Compatibility
+
+|=======
+|App version |Required XP version |Download
+
+|0.1.0 |7.1.0 |https://repo.enonic.com/public/com/enonic/app/adfsidprovider/0.1.0/adfsidprovider-0.1.0.jar[Download]
+|=======
+
+== Configuration
+
+=== Authorization Server
+
+The configuration depends on the Authorization Server selected and is not covered by this documentation.
+It will typically require the creation and configuration of a Client/Application.
+
+==== Authorization Server - Redirection/Callback URI
+
+Once authenticated by the Authorization Server, the End-User will be redirected to Enonic XP.
+During the configuration of your Client/Application, you will have to register this callback URL.
+The callback URL depends on the VHost mapping and the name of the ID Provider.
+It has the following format:  [VHost source]/_/idprovider/[ID Provider name]
+
+Example: www.example.com/_/idprovider/myoidcprovider
+
+==== Authorization Server - Information required for the ID Provider Config
+
+You will need to gather the following information for the ID Provider configuration
+
+. The Client ID
+. The Client secret
+. The Authorization endpoint URL
+. The Token endpoint URL
+
+The client credentials are accessible after the creation/configuration of the Client.
+
+You might have been given a single Issuer URL instead of the list of endpoint URLs.
+In that case the endpoint URLs are accessible under: [Issuer URL]/.well-known/openid-configuration
+The result will contain the required URLs: "authorization_endpoint" and "token_endpoint
+
+Example: Auth0
+
+- OpenID Provider Configuration URL: [Domain URL]/.well-known/openid-configuration
+- Authorization endpoint URL: [Domain URL]/authorize
+- Token endpoint URL: [Domain URL]/oauth/token
+
+Example: Google
+
+- OpenID Provider Configuration URL: https://accounts.google.com/.well-known/openid-configuration
+- Authorization endpoint URL: https://accounts.google.com/o/oauth2/v2/auth
+- Token endpoint URL: https://oauth2.googleapis.com/token
+
+
+=== Enonic XP
+
+
+==== Application Installation
+
+. In the admin tool "Applications", click on "Install".
+. Select the tab "Enonic Market", find "OIDC ID Provider", and click on the link "Install".
+
+==== ID Provider creation
+
+. In the admin tool "Users", click on "New" and select "Id Provider".
+. Fill in the fields and, for the field "Applications", select the application "OIDC ID Provider".
+. Configure the ID Provider with the information gathered previously.
+
+====  Virtual Host Mapping configuration
+
+. Edit the configuration file "com.enonic.xp.web.vhost.cfg", and set the new user store to your virtual host. (See https://developer.enonic.com/docs/xp/stable/deployment/vhosts[Virtual Host Configuration] for more information).
+
+    mapping.example.host = example.com
+    mapping.example.source = /
+    mapping.example.target = /portal/master/mysite
+    mapping.example.idProvider.myoidcprovider = default
+
+
+
+
+
+
+
