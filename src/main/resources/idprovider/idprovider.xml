@@ -26,7 +26,7 @@
           <occurrences minimum="1" maximum="1"/>
         </input>
         <item-set name="endSession">
-          <label>End Session - Draft feature</label>
+          <label>End Session</label>
           <help-text>Specify if available and if the user should be logged out of the authorization server as well</help-text>
           <items>
             <input name="url" type="TextLine">
