@@ -5,8 +5,8 @@ function generateToken() {
     return Java.type('com.enonic.app.oidcidprovider.OIDCUtils').generateToken();
 }
 
-function parseClaims(jwt) {
-    const parsedJwt = Java.type('com.enonic.app.oidcidprovider.OIDCUtils').parseClaims(jwt);
+function parseClaims(jwt, issuer, clientId, nonce) {
+    const parsedJwt = Java.type('com.enonic.app.oidcidprovider.OIDCUtils').parseClaims(jwt, issuer, clientId, nonce);
     return __.toNativeObject(parsedJwt);
 }
 
@@ -28,11 +28,13 @@ function generateAuthorizationUrl(params) {
 }
 
 function requestIDToken(params) {
+    const issuer = preconditions.checkParameter(params, 'issuer');
     const tokenUrl = preconditions.checkParameter(params, 'tokenUrl');
-    const code = preconditions.checkParameter(params, 'code');
-    const redirectUri = preconditions.checkParameter(params, 'redirectUri');
     const clientId = preconditions.checkParameter(params, 'clientId');
     const clientSecret = preconditions.checkParameter(params, 'clientSecret');
+    const redirectUri = preconditions.checkParameter(params, 'redirectUri');
+    const nonce = preconditions.checkParameter(params, 'nonce');
+    const code = preconditions.checkParameter(params, 'code');
     //TODO Handle different authentication methods
 
     //https://openid.net/specs/openid-connect-core-1_0.html#TokenRequest
@@ -66,8 +68,8 @@ function requestIDToken(params) {
         throw 'Token error [' + params.error + ']' + (params.error_description ? ': ' + params.error_description : '');
     }
 
-    //TODO Validate token
-    const claims = parseClaims(responseBody.id_token);
+    const claims = parseClaims(responseBody.id_token, issuer, clientId, nonce);
+    log.debug('Parsed claims: ' + JSON.stringify(claims));
 
     return claims;
 }

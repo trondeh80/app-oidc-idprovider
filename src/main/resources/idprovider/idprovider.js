@@ -63,11 +63,13 @@ function handleAuthenticationResponse(req) {
 
     //https://tools.ietf.org/html/rfc6749#section-2.3.1
     const claims = oidcLib.requestIDToken({
+        issuer: idProviderConfig.issuer,
         tokenUrl: idProviderConfig.tokenUrl,
-        code: code,
-        redirectUri: context.redirectUri,
         clientId: idProviderConfig.clientId,
         clientSecret: idProviderConfig.clientSecret,
+        redirectUri: context.redirectUri,
+        nonce: context.nonce,
+        code: code,
     });
     log.debug('ID Token claims: ' + JSON.stringify(claims));
 
