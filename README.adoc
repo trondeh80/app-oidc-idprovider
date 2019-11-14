@@ -14,5 +14,5 @@ This ID Provider application follows the Authorization Code Flow and uses the Cl
 |0.1.0 |7.1.0 |https://repo.enonic.com/public/com/enonic/app/adfsidprovider/0.1.0/adfsidprovider-0.1.0.jar[Download]
 |=======
 
-== link:docs/index.html[Configuration]
+== link:docs/index.adoc[Configuration]
 
