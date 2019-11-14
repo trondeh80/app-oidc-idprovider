@@ -97,19 +97,33 @@ function getRequestParams(req) {
 function logout(req) {
     authLib.logout();
 
-    var finalRedirectUrl = (req.validTicket && req.params.redirect) || generateRedirectUrl();
+    const finalRedirectUrl = (req.validTicket && req.params.redirect);
 
+    let redirectUrl;
     const config = configLib.getIdProviderConfig();
-    if (config.endSessionUrl) {
-        return {
-            //TODO
-            redirect: config.endSessionUrl
-        };
+    if (config.endSession) {
+        redirectUrl = config.endSession.url;
+        if (finalRedirectUrl || (config.endSession.additionalParameters && config.endSession.additionalParameters.length > 0)) {
+            redirectUrl += '?';
+
+            if (finalRedirectUrl) {
+                redirectUrl += config.endSession.postLogoutRedirectUriKey + '=' + encodeURIComponent(finalRedirectUrl)
+            }
+
+            toArray(config.endSession.additionalParameters).forEach(additionalParameter => {
+                if (!redirectUrl.endsWith("?")) {
+                    redirectUrl += '&';
+                }
+                redirectUrl += additionalParameter.key + '=' + additionalParameter.value;
+            });
+        }
     } else {
-        return {
-            redirect: finalRedirectUrl
-        };
+        redirectUrl = finalRedirectUrl || generateRedirectUrl();
     }
+
+    return {
+        redirect: redirectUrl
+    };
 }
 
 
@@ -122,6 +136,16 @@ function generateRedirectUrl() {
     }
     return '/';
 }
+
+function toArray(object) {
+    if (!object) {
+        return [];
+    }
+    if (object.constructor === Array) {
+        return object;
+    }
+    return [object];
+};
 
 
 exports.handle401 = redirectToAuthorizationEndpoint;

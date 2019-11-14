@@ -25,12 +25,46 @@
           <default>https://oauth2.googleapis.com/token</default>
           <occurrences minimum="1" maximum="1"/>
         </input>
-        <input name="endSessionUrl" type="TextLine">
-          <label>End session URL</label>
-          <help-text>End session endpoint URL of the authorization server (if available)</help-text>
-          <default></default>
+        <item-set name="endSession">
+          <label>End Session - Draft feature</label>
+          <help-text>Specify if available and if the user should be logged out of the authorization server as well</help-text>
+          <items>
+            <input name="url" type="TextLine">
+              <label>End session URL</label>
+              <help-text>End session endpoint URL of the authorization server</help-text>
+              <default></default>
+              <occurrences minimum="1" maximum="1"/>
+            </input>
+            <field-set>
+              <label>Parameters Names</label>
+              <items>
+                <input name="postLogoutRedirectUriKey" type="TextLine">
+                  <label>Post Logout Redirect URI parameter name</label>
+                  <default>post_logout_redirect_uri</default>
+                  <occurrences minimum="1" maximum="1"/>
+                </input>
+              </items>
+            </field-set>
+            <item-set name="additionalParameters">
+              <label>Additional Parameters</label>
+              <items>
+                <input name="key" type="TextLine">
+                  <label>Key</label>
+                  <occurrences minimum="1" maximum="1"/>
+                </input>
+                <input name="value" type="TextLine">
+                  <label>Value</label>
+                  <occurrences minimum="1" maximum="1"/>
+                </input>
+              </items>
+              <occurrences minimum="0" maximum="0"/>
+            </item-set>
+
+          </items>
           <occurrences minimum="0" maximum="1"/>
-        </input>
+        </item-set>
+
+
       </items>
     </field-set>
     <field-set>
