@@ -8,9 +8,9 @@ function storeContext(params) {
     bean.storeContext(params.state, params.nonce, params.originalUrl, params.redirectUri);
 }
 
-function removeContext() {
+function removeContext(state) {
     var bean = __.newBean('com.enonic.app.oidcidprovider.PortalRequestBean');
-    return __.toNativeObject(bean.removeContext());
+    return __.toNativeObject(bean.removeContext(state));
 }
 
 exports.getRequestUrl = getRequestUrl;

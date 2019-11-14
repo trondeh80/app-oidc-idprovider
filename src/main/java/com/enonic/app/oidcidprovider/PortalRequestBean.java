@@ -1,7 +1,11 @@
 package com.enonic.app.oidcidprovider;
 
 
+import java.util.Map;
+
 import javax.servlet.http.HttpSession;
+
+import com.google.common.collect.ImmutableMap;
 
 import com.enonic.app.oidcidprovider.mapper.ContextMapper;
 import com.enonic.xp.portal.PortalRequest;
@@ -12,13 +16,7 @@ import com.enonic.xp.web.servlet.ServletRequestUrlHelper;
 public class PortalRequestBean
     implements ScriptBean
 {
-    private static final String STATE_KEY = "com.enonic.app.oidcidprovider.state";
-
-    private static final String NONCE_KEY = "com.enonic.app.oidcidprovider.nonce";
-
-    private static final String REDIRECTURI_KEY = "com.enonic.app.oidcidprovider.redirectUri";
-
-    private static final String ORIGINALURL_KEY = "com.enonic.app.oidcidprovider.originalUrl";
+    private static final String CONTEXT_KEY = "com.enonic.app.oidcidprovider.context";
 
     private PortalRequest portalRequest;
 
@@ -29,27 +27,40 @@ public class PortalRequestBean
 
     public void storeContext( final String state, final String nonce, final String originalUrl, final String redirectUri )
     {
+        final ImmutableMap.Builder<String, Context> contextMap = ImmutableMap.builder();
+
         final HttpSession session = portalRequest.getRawRequest().getSession( true );
-        session.setAttribute( STATE_KEY, state );
-        session.setAttribute( NONCE_KEY, nonce );
-        session.setAttribute( ORIGINALURL_KEY, originalUrl );
-        session.setAttribute( REDIRECTURI_KEY, redirectUri );
+        Map<String, Context> existingContextMap = (Map<String, Context>) session.getAttribute( CONTEXT_KEY );
+        if ( existingContextMap != null )
+        {
+            contextMap.putAll( existingContextMap );
+        }
+
+        final Context context = Context.create().
+            state( state ).
+            nonce( nonce ).
+            originalUrl( originalUrl ).
+            redirectUri( redirectUri ).
+            build();
+        contextMap.put( state, context );
+
+        session.setAttribute( CONTEXT_KEY, contextMap.build() );
     }
 
-    public ContextMapper removeContext()
+    public ContextMapper removeContext( final String state )
     {
         final HttpSession session = portalRequest.getRawRequest().getSession( true );
-        final ContextMapper context = ContextMapper.create().
-            state( (String) session.getAttribute( STATE_KEY ) ).
-            nonce( (String) session.getAttribute( NONCE_KEY ) ).
-            originalUrl( (String) session.getAttribute( ORIGINALURL_KEY ) ).
-            redirectUri( (String) session.getAttribute( REDIRECTURI_KEY ) ).
-            build();
-        session.removeAttribute( STATE_KEY );
-        session.removeAttribute( NONCE_KEY );
-        session.removeAttribute( ORIGINALURL_KEY );
-        session.removeAttribute( REDIRECTURI_KEY );
-        return context;
+
+        final Map<String, Context> contextMap = (Map<String, Context>) session.getAttribute( CONTEXT_KEY );
+        final Context context = contextMap == null ? null : contextMap.get( state );
+
+        if ( context != null )
+        {
+            session.removeAttribute( CONTEXT_KEY );
+            return ContextMapper.from( context );
+        }
+
+        return null;
     }
 
     @Override

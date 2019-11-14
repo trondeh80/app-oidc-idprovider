@@ -1,25 +1,22 @@
 package com.enonic.app.oidcidprovider.mapper;
 
+import com.enonic.app.oidcidprovider.Context;
 import com.enonic.xp.script.serializer.MapGenerator;
 import com.enonic.xp.script.serializer.MapSerializable;
 
 public class ContextMapper
     implements MapSerializable
 {
-    private final String state;
-
-    private final String nonce;
-
-    private final String originalUrl;
-
-    private final String redirectUri;
+    private final Context context;
 
     private ContextMapper( final Builder builder )
     {
-        state = builder.state;
-        nonce = builder.nonce;
-        originalUrl = builder.originalUrl;
-        redirectUri = builder.redirectUri;
+        context = builder.context;
+    }
+
+    public static ContextMapper from( final Context context )
+    {
+        return create().context( context ).build();
     }
 
     public static Builder create()
@@ -30,47 +27,23 @@ public class ContextMapper
     @Override
     public void serialize( final MapGenerator gen )
     {
-        gen.value( "state", state );
-        gen.value( "nonce", nonce );
-        gen.value( "originalUrl", originalUrl );
-        gen.value( "redirectUri", redirectUri );
+        gen.value( "state", context.getState() );
+        gen.value( "nonce", context.getNonce() );
+        gen.value( "originalUrl", context.getOriginalUrl() );
+        gen.value( "redirectUri", context.getRedirectUri() );
     }
 
     public static final class Builder
     {
-        private String state;
-
-        private String nonce;
-
-        private String originalUrl;
-
-        private String redirectUri;
+        private Context context;
 
         private Builder()
         {
         }
 
-        public Builder state( final String state )
+        public Builder context( final Context context )
         {
-            this.state = state;
-            return this;
-        }
-
-        public Builder nonce( final String nonce )
-        {
-            this.nonce = nonce;
-            return this;
-        }
-
-        public Builder originalUrl( final String originalUrl )
-        {
-            this.originalUrl = originalUrl;
-            return this;
-        }
-
-        public Builder redirectUri( final String redirectUri )
-        {
-            this.redirectUri = redirectUri;
+            this.context = context;
             return this;
         }
 

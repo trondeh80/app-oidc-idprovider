@@ -2,36 +2,54 @@
 <id-provider xmlns="urn:enonic:xp:model:1.0">
   <mode>MIXED</mode>
   <form>
-    <input name="authorizationUrl" type="TextLine">
-      <label>Authorization endpoint URL</label>
-      <help-text>Authorization endpoint URL of the authorization server</help-text>
-      <default>https://accounts.google.com/o/oauth2/v2/auth</default>
-      <occurrences minimum="1" maximum="1"/>
-    </input>
-    <input name="tokenUrl" type="TextLine">
-      <label>Token endpoint URL</label>
-      <help-text>Token endpoint URL of the authorization server</help-text>
-      <default>https://oauth2.googleapis.com/token</default>
-      <occurrences minimum="1" maximum="1"/>
-    </input>
-    <input name="endSessionUrl" type="TextLine">
-      <label>End session URL</label>
-      <help-text>End session endpoint URL of the authorization server (if available)</help-text>
-      <default></default>
-      <occurrences minimum="0" maximum="1"/>
-    </input>
-    <input name="clientId" type="TextLine">
-      <label>Client Identifier</label>
-      <help-text>OAuth 2.0 Client Identifier</help-text>
-      <occurrences minimum="1" maximum="1"/>
-    </input>
-    <input name="clientSecret" type="TextLine">
-      <label>Client Secret</label>
-      <help-text>Client secret</help-text>
-      <occurrences minimum="1" maximum="1"/>
-    </input>
     <field-set>
-      <label>Groups</label>
+      <label>Authorization Server</label>
+      <items>
+        <input name="issuer" type="TextLine">
+          <label>Issuer Identifier</label>
+          <help-text>Case sensitive URL using the https scheme that contains scheme, host, and optionally, port number and path components
+            and no query or fragment components
+          </help-text>
+          <default>https://accounts.google.com</default>
+          <occurrences minimum="1" maximum="1"/>
+        </input>
+        <input name="authorizationUrl" type="TextLine">
+          <label>Authorization endpoint URL</label>
+          <help-text>Authorization endpoint URL of the authorization server</help-text>
+          <default>https://accounts.google.com/o/oauth2/v2/auth</default>
+          <occurrences minimum="1" maximum="1"/>
+        </input>
+        <input name="tokenUrl" type="TextLine">
+          <label>Token endpoint URL</label>
+          <help-text>Token endpoint URL of the authorization server</help-text>
+          <default>https://oauth2.googleapis.com/token</default>
+          <occurrences minimum="1" maximum="1"/>
+        </input>
+        <input name="endSessionUrl" type="TextLine">
+          <label>End session URL</label>
+          <help-text>End session endpoint URL of the authorization server (if available)</help-text>
+          <default></default>
+          <occurrences minimum="0" maximum="1"/>
+        </input>
+      </items>
+    </field-set>
+    <field-set>
+      <label>Client</label>
+      <items>
+        <input name="clientId" type="TextLine">
+          <label>Client Identifier</label>
+          <help-text>OAuth 2.0 Client Identifier</help-text>
+          <occurrences minimum="1" maximum="1"/>
+        </input>
+        <input name="clientSecret" type="TextLine">
+          <label>Client Secret</label>
+          <help-text>Client secret</help-text>
+          <occurrences minimum="1" maximum="1"/>
+        </input>
+      </items>
+    </field-set>
+    <field-set>
+      <label>User Creation</label>
       <items>
         <input name="defaultGroups" type="PrincipalSelector">
           <label>Default groups</label>

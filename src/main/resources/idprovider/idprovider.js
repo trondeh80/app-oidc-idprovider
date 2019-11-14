@@ -47,8 +47,12 @@ function generateRedirectUri() {
 }
 
 function handleAuthenticationResponse(req) {
-    const context = requestLib.removeContext();
-    const params = getRequestParams(req, context);
+    const params = getRequestParams(req);
+
+    const context = requestLib.removeContext(params.state);
+    if (!context || context.state !== params.state) {
+        throw 'Invalid state parameter: ' + params.state;
+    }
 
     if (params.error) {
         throw 'Authentication error [' + params.error + ']' + (params.error_description ? ': ' + params.error_description : '');
@@ -75,16 +79,11 @@ function handleAuthenticationResponse(req) {
     };
 }
 
-function getRequestParams(req, context) {
+function getRequestParams(req) {
     const params = req.params;
     log.debug('Checking response params: ' + JSON.stringify(params));
 
-    const state = preconditions.checkParameter(params, 'state');
-    log.debug('Removed context: ' + JSON.stringify(context));
-
-    if (state !== context.state) {
-        throw 'Invalid state parameter: ' + state;
-    }
+    preconditions.checkParameter(params, 'state');
 
     if (!params.error) {
         preconditions.checkParameter(params, 'code');
