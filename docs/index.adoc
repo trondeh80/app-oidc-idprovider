@@ -6,14 +6,6 @@ This ID Provider application, acting as a OIDC Relying Party. will verify the id
 It will redirect unauthenticated users to the Authentication Server and obtain basic information in order to create a user within Enonic XP.
 This ID Provider application follows the Authorization Code Flow and uses the Client/Secret POST token auth method.
 
-== Releases and Compatibility
-
-|=======
-|App version |Required XP version |Download
-
-|0.1.0 |7.1.0 |https://repo.enonic.com/public/com/enonic/app/adfsidprovider/0.1.0/adfsidprovider-0.1.0.jar[Download]
-|=======
-
 == Configuration
 
 === Authorization Server
