@@ -28,6 +28,7 @@ function redirectToAuthorizationEndpoint() {
         authorizationUrl: idProviderConfig.authorizationUrl,
         clientId: idProviderConfig.clientId,
         redirectUri: redirectUri,
+        scopes: 'openid profile' + (idProviderConfig.scopes.email ? ' email' : ''),
         state: state,
         nonce: nonce
     });

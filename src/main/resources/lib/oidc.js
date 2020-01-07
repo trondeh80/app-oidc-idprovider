@@ -14,12 +14,13 @@ function generateAuthorizationUrl(params) {
     const authorizationUrl = preconditions.checkParameter(params, 'authorizationUrl');
     const clientId = preconditions.checkParameter(params, 'clientId');
     const redirectUri = preconditions.checkParameter(params, 'redirectUri');
+    const scope = preconditions.checkParameter(params, 'scopes');
     const state = preconditions.checkParameter(params, 'state');
     const nonce = preconditions.checkParameter(params, 'nonce');
 
     //https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
     return authorizationUrl
-           + '?scope=' + encodeURIComponent('openid email profile')
+           + '?scope=' + encodeURIComponent(scope)
            + '&response_type=code'
            + '&client_id=' + encodeURIComponent(clientId)
            + '&redirect_uri=' + encodeURIComponent(redirectUri)

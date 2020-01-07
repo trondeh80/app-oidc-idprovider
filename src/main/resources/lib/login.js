@@ -18,8 +18,9 @@ function login(claims) {
 
         //Creates the users
         const idProviderConfig = configLib.getIdProviderConfig();
-        const email = preconditions.checkParameter(claims, 'email');
+        const email = idProviderConfig.scopes.email ? preconditions.checkParameter(claims, 'email') : null;
         if (idProviderConfig.rules && idProviderConfig.rules.forceEmailVerification) {
+            preconditions.check(idProviderConfig.scopes.email === true, 'Cannot perform email verification without email scope');
             preconditions.check(claims.email_verified === true, 'Email must be verified');
         }
         const displayName = claims.preferred_username || claims.name || email;
