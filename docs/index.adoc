@@ -20,7 +20,8 @@ During the configuration of your Client/Application, you will have to register t
 The callback URL depends on the VHost mapping and the name of the ID Provider.
 It has the following format:  [VHost source]/_/idprovider/[ID Provider name]
 
-Example: www.example.com/_/idprovider/myoidcprovider
+Example for a site: www.example.com/_/idprovider/myoidcprovider
+Example for admin: www.example.com/admin/tool/_/idprovider/myoidcprovider
 
 ==== Authorization Server - Information required for the ID Provider Config
 
