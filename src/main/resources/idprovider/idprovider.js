@@ -63,7 +63,7 @@ function handleAuthenticationResponse(req) {
     const code = params.code;
 
     //https://tools.ietf.org/html/rfc6749#section-2.3.1
-    const claims = oidcLib.requestIDToken({
+    const idToken = oidcLib.requestIDToken({
         issuer: idProviderConfig.issuer,
         tokenUrl: idProviderConfig.tokenUrl,
         clientId: idProviderConfig.clientId,
@@ -72,10 +72,14 @@ function handleAuthenticationResponse(req) {
         nonce: context.nonce,
         code: code,
     });
-    log.debug('ID Token claims: ' + JSON.stringify(claims));
+    log.debug('ID Token claims: ' + JSON.stringify(idToken.claims));
 
 
-    loginLib.login(claims);
+    loginLib.login(idToken.claims);
+
+    if (idProviderConfig.endSession && idProviderConfig.endSession.idTokenHintKey) {
+        requestLib.storeIdToken(idToken.value);
+    }
 
     return {
         redirect: context.originalUrl
@@ -96,6 +100,8 @@ function getRequestParams(req) {
 }
 
 function logout(req) {
+    const idToken = requestLib.getIdToken();
+
     authLib.logout();
 
     const finalRedirectUrl = (req.validTicket && req.params.redirect);
@@ -104,18 +110,28 @@ function logout(req) {
     const config = configLib.getIdProviderConfig();
     if (config.endSession) {
         redirectUrl = config.endSession.url;
-        if (finalRedirectUrl || (config.endSession.additionalParameters && config.endSession.additionalParameters.length > 0)) {
+        if ((config.endSession.idTokenHintKey && idToken) || (finalRedirectUrl && config.endSession.postLogoutRedirectUriKey) ||
+            (config.endSession.additionalParameters && Object.keys(config.endSession.additionalParameters).length > 0)) {
             redirectUrl += '?';
 
-            if (finalRedirectUrl) {
+            if (config.endSession.idTokenHintKey && idToken) {
+                redirectUrl += config.endSession.idTokenHintKey + '=' + idToken;
+            }
+
+            if (finalRedirectUrl && config.endSession.postLogoutRedirectUriKey) {
+                if (!redirectUrl.endsWith("?")) {
+                    redirectUrl += '&';
+                }
                 redirectUrl += config.endSession.postLogoutRedirectUriKey + '=' + encodeURIComponent(finalRedirectUrl)
             }
 
             toArray(config.endSession.additionalParameters).forEach(additionalParameter => {
-                if (!redirectUrl.endsWith("?")) {
-                    redirectUrl += '&';
+                if (additionalParameter.key != null && additionalParameter.value != null) {
+                    if (!redirectUrl.endsWith("?")) {
+                        redirectUrl += '&';
+                    }
+                    redirectUrl += additionalParameter.key + '=' + additionalParameter.value;
                 }
-                redirectUrl += additionalParameter.key + '=' + additionalParameter.value;
             });
         }
     } else {

@@ -13,6 +13,18 @@ function removeContext(state) {
     return __.toNativeObject(bean.removeContext(state));
 }
 
+function storeIdToken(idToken) {
+    var bean = __.newBean('com.enonic.app.oidcidprovider.PortalRequestBean');
+    bean.storeIdToken(idToken);
+}
+
+function getIdToken() {
+    var bean = __.newBean('com.enonic.app.oidcidprovider.PortalRequestBean');
+    return bean.getIdToken();
+}
+
 exports.getRequestUrl = getRequestUrl;
 exports.storeContext = storeContext;
 exports.removeContext = removeContext;
+exports.storeIdToken = storeIdToken;
+exports.getIdToken = getIdToken;

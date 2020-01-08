@@ -72,7 +72,10 @@ function requestIDToken(params) {
     const claims = parseClaims(responseBody.id_token, issuer, clientId, nonce);
     log.debug('Parsed claims: ' + JSON.stringify(claims));
 
-    return claims;
+    return {
+        value : responseBody.id_token,
+        claims: claims
+    };
 }
 
 exports.generateToken = generateToken;

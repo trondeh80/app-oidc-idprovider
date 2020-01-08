@@ -38,10 +38,15 @@
             <field-set>
               <label>Parameters Names</label>
               <items>
+                <input name="idTokenHintKey" type="TextLine">
+                  <label>ID Token Hint parameter name. Leave empty to omit the parameter</label>
+                  <default>id_token_hint</default>
+                  <occurrences minimum="0" maximum="1"/>
+                </input>
                 <input name="postLogoutRedirectUriKey" type="TextLine">
-                  <label>Post Logout Redirect URI parameter name</label>
+                  <label>Post Logout Redirect URI parameter name. Leave empty to omit the parameter</label>
                   <default>post_logout_redirect_uri</default>
-                  <occurrences minimum="1" maximum="1"/>
+                  <occurrences minimum="0" maximum="1"/>
                 </input>
               </items>
             </field-set>

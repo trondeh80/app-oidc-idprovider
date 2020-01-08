@@ -18,6 +18,8 @@ public class PortalRequestBean
 {
     private static final String CONTEXT_KEY = "com.enonic.app.oidcidprovider.context";
 
+    private static final String ID_TOKEN_KEY = "com.enonic.app.oidcidprovider.idtoken";
+
     private PortalRequest portalRequest;
 
     public String getRequestUrl()
@@ -61,6 +63,18 @@ public class PortalRequestBean
         }
 
         return null;
+    }
+
+    public void storeIdToken( final String idToken )
+    {
+        final HttpSession session = portalRequest.getRawRequest().getSession( true );
+        session.setAttribute( ID_TOKEN_KEY, idToken );
+    }
+
+    public String getIdToken()
+    {
+        final HttpSession session = portalRequest.getRawRequest().getSession( true );
+        return (String) session.getAttribute( ID_TOKEN_KEY );
     }
 
     @Override
