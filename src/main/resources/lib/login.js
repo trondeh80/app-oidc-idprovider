@@ -23,7 +23,7 @@ function login(claims) {
             preconditions.check(idProviderConfig.scopes.email === true, 'Cannot perform email verification without email scope');
             preconditions.check(claims.email_verified === true, 'Email must be verified');
         }
-        const displayName = claims.preferred_username || claims.name || email;
+        const displayName = claims.preferred_username || claims.name || email || claims.sub;
 
         const user = contextLib.runAsSu(() => authLib.createUser({
             idProvider: idProviderKey,
