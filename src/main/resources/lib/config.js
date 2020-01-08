@@ -16,7 +16,14 @@ function getIdProviderConfig() {
     if (idProviderConfig.scopes.email !== false) {
         idProviderConfig.scopes.email = true;
     }
+    if (!idProviderConfig.mappings) {
+        idProviderConfig.mappings = {};
+    }
+    if (!idProviderConfig.mappings.displayName) {
+        idProviderConfig.mappings.displayName = '${preferred_username}';
+    }
 
+    idProviderConfig.mappings.displayName = idProviderConfig.mappings.displayName.trim();
 
     return idProviderConfig;
 }

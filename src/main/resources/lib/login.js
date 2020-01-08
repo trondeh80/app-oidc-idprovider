@@ -5,6 +5,8 @@ const commonLib = require('/lib/xp/common');
 const portalLib = require('/lib/xp/portal');
 const preconditions = require('/lib/preconditions');
 
+const displayNameRegExp = /\$\{([^\/]+)\}/g;
+
 function login(claims) {
 
     //Retrieves the user
@@ -18,12 +20,16 @@ function login(claims) {
 
         //Creates the users
         const idProviderConfig = configLib.getIdProviderConfig();
-        const email = idProviderConfig.scopes.email ? preconditions.checkParameter(claims, 'email') : null;
         if (idProviderConfig.rules && idProviderConfig.rules.forceEmailVerification) {
             preconditions.check(idProviderConfig.scopes.email === true, 'Cannot perform email verification without email scope');
             preconditions.check(claims.email_verified === true, 'Email must be verified');
         }
-        const displayName = claims.preferred_username || claims.name || email || claims.sub;
+
+
+        const email = idProviderConfig.scopes.email ? preconditions.checkParameter(claims, 'email') : null;
+
+        const displayName = idProviderConfig.mappings.displayName.replace(displayNameRegExp, (match, claimKey) => claims[claimKey] || '') ||
+                            claims.preferred_username || claims.name || email || claims.sub;
 
         const user = contextLib.runAsSu(() => authLib.createUser({
             idProvider: idProviderKey,

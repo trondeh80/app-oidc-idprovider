@@ -85,6 +85,18 @@
     <field-set>
       <label>User Creation</label>
       <items>
+        <item-set name="mappings">
+          <label>Mappings</label>
+          <items>
+            <input name="displayName" type="TextLine">
+              <label>Display name</label>
+              <help-text>Display name template</help-text>
+              <occurrences minimum="1" maximum="1"/>
+              <default>${preferred_username}</default>
+            </input>
+          </items>
+          <occurrences minimum="1" maximum="1"/>
+        </item-set>
         <input name="defaultGroups" type="PrincipalSelector">
           <label>Default groups</label>
           <help-text>Groups associated with users upon user creation</help-text>
