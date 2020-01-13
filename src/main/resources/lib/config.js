@@ -10,11 +10,8 @@ function getIdProviderConfig() {
     preconditions.checkConfig(idProviderConfig, 'clientSecret');
 
     //Handle backward compatibility
-    if (!idProviderConfig.scopes) {
-        idProviderConfig.scopes = {};
-    }
-    if (idProviderConfig.scopes.email !== false) {
-        idProviderConfig.scopes.email = true;
+    if (idProviderConfig.scopes == null) {
+        idProviderConfig.scopes = 'profile email';
     }
     if (!idProviderConfig.mappings) {
         idProviderConfig.mappings = {};
@@ -22,8 +19,13 @@ function getIdProviderConfig() {
     if (!idProviderConfig.mappings.displayName) {
         idProviderConfig.mappings.displayName = '${preferred_username}';
     }
+    if (idProviderConfig.mappings.email == null) {
+        idProviderConfig.mappings.email = '${email}';
+    }
 
+    idProviderConfig.scopes = idProviderConfig.scopes.trim();
     idProviderConfig.mappings.displayName = idProviderConfig.mappings.displayName.trim();
+    idProviderConfig.mappings.email = idProviderConfig.mappings.email.trim();
 
     return idProviderConfig;
 }

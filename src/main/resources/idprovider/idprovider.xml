@@ -25,6 +25,13 @@
           <default>https://oauth2.googleapis.com/token</default>
           <occurrences minimum="1" maximum="1"/>
         </input>
+        <input name="scopes" type="TextLine">
+          <label>Additional scopes</label>
+          <help-text>Scopes in addition to "openid". Space separated. We recommend adding at least the standard scopes "profile email".
+          </help-text>
+          <default>profile email</default>
+          <occurrences minimum="1" maximum="1"/>
+        </input>
         <item-set name="endSession">
           <label>End Session</label>
           <help-text>Specify if available and if the user should be logged out of the authorization server as well</help-text>
@@ -64,12 +71,9 @@
               </items>
               <occurrences minimum="0" maximum="0"/>
             </item-set>
-
           </items>
           <occurrences minimum="0" maximum="1"/>
         </item-set>
-
-
       </items>
     </field-set>
     <field-set>
@@ -99,6 +103,12 @@
               <occurrences minimum="1" maximum="1"/>
               <default>${preferred_username}</default>
             </input>
+            <input name="email" type="TextLine">
+              <label>Email</label>
+              <help-text>User email</help-text>
+              <occurrences minimum="1" maximum="1"/>
+              <default>${email}</default>
+            </input>
           </items>
           <occurrences minimum="1" maximum="1"/>
         </item-set>
@@ -112,29 +122,24 @@
         </input>
       </items>
     </field-set>
-    <item-set name="scopes">
-      <label>Scopes</label>
-      <items>
-        <input name="email" type="CheckBox">
-          <label>Retrieve Email Information</label>
-          <occurrences minimum="1" maximum="1"/>
-          <default>checked</default>
-        </input>
-      </items>
-      <occurrences minimum="1" maximum="1"/>
-    </item-set>
-    <item-set name="rules">
+    <field-set>
       <label>Rules</label>
       <items>
-        <input name="forceEmailVerification" type="CheckBox">
-          <label>Enforce Email Verification</label>
-          <help-text>Enforce email verification. Requires the email scope</help-text>
+        <item-set name="rules">
+          <label>Rules</label>
+          <items>
+            <input name="forceEmailVerification" type="CheckBox">
+              <label>Enforce Email Verification</label>
+              <help-text>Enforce email verification. Requires the email scope</help-text>
+              <occurrences minimum="1" maximum="1"/>
+              <default>checked</default>
+            </input>
+          </items>
           <occurrences minimum="1" maximum="1"/>
-          <default>checked</default>
-        </input>
+        </item-set>
       </items>
-      <occurrences minimum="1" maximum="1"/>
-    </item-set>
+    </field-set>
+
 
   </form>
 </id-provider>

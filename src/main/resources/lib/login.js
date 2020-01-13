@@ -5,7 +5,7 @@ const commonLib = require('/lib/xp/common');
 const portalLib = require('/lib/xp/portal');
 const preconditions = require('/lib/preconditions');
 
-const displayNameRegExp = /\$\{([^\/]+)\}/g;
+const regExp = /\$\{([^\/]+)\}/g;
 
 function login(claims) {
 
@@ -21,14 +21,11 @@ function login(claims) {
         //Creates the users
         const idProviderConfig = configLib.getIdProviderConfig();
         if (idProviderConfig.rules && idProviderConfig.rules.forceEmailVerification) {
-            preconditions.check(idProviderConfig.scopes.email === true, 'Cannot perform email verification without email scope');
             preconditions.check(claims.email_verified === true, 'Email must be verified');
         }
 
-
-        const email = idProviderConfig.scopes.email ? preconditions.checkParameter(claims, 'email') : null;
-
-        const displayName = idProviderConfig.mappings.displayName.replace(displayNameRegExp, (match, claimKey) => claims[claimKey] || '') ||
+        const email = idProviderConfig.mappings.email.replace(regExp, (match, claimKey) => getClaim(claims, claimKey)) || null;
+        const displayName = idProviderConfig.mappings.displayName.replace(regExp, (match, claimKey) => getClaim(claims, claimKey)) ||
                             claims.preferred_username || claims.name || email || claims.sub;
 
         const user = contextLib.runAsSu(() => authLib.createUser({
@@ -77,6 +74,14 @@ function toArray(object) {
         return object;
     }
     return [object];
-};
+}
+
+function getClaim(claims, claimKey) {
+    const claim = claims[claimKey];
+    if (claim == null) {
+        log.warning('Claim [' + claimKey + '] missing');
+    }
+    return claim || '';
+}
 
 exports.login = login;
