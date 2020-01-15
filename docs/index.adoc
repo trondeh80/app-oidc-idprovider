@@ -20,8 +20,8 @@ During the configuration of your Client/Application, you will have to register t
 The callback URL depends on the VHost mapping and the name of the ID Provider.
 It has the following format:  [VHost source]/_/idprovider/[ID Provider name]
 
-Example for a site: www.example.com/_/idprovider/myoidcprovider
-Example for admin: www.example.com/admin/tool/_/idprovider/myoidcprovider
+Example for a site: https://www.example.com/_/idprovider/myoidcprovider
+Example for admin:  https://www.example.com/admin/tool/_/idprovider/myoidcprovider
 
 ==== Authorization Server - Information required for the ID Provider Config
 
@@ -60,6 +60,13 @@ Example: Azure AD
 - Authorization endpoint URL: https://login.microsoftonline.com/{TenantID}/oauth2/authorize
 - Token endpoint URL: https://login.microsoftonline.com/{TenantID}/oauth2/token
 
+Example: Difi/ID-porten/VER1
+
+- OpenID Provider Configuration URL: https://oidc-ver1.difi.no/idporten-oidc-provider/.well-known/openid-configuration
+- Issuer Identifier: https://oidc-ver1.difi.no/idporten-oidc-provider/
+- Authorization endpoint URL: https://oidc-ver1.difi.no/idporten-oidc-provider/authorize
+- Token endpoint URL: https://oidc-ver1.difi.no/idporten-oidc-provider/token
+
 
 === Enonic XP
 
@@ -73,7 +80,7 @@ Example: Azure AD
 
 . In the admin tool "Users", click on "New" and select "Id Provider".
 . Fill in the fields and, for the field "Applications", select the application "OIDC ID Provider".
-. Configure the ID Provider with the information gathered previously.
+. Configure the ID Provider with the information gathered previously. See <<Enonic XP - ID Provider configuration>> for more information
 
 ====  Virtual Host Mapping configuration
 
@@ -84,13 +91,54 @@ Example: Azure AD
     mapping.example.target = /portal/master/mysite
     mapping.example.idProvider.myoidcprovider = default
 
+=== Enonic XP - ID Provider configuration
+
+==== Authorization Server
+
+Information mostly found from the OpenID Provider Configuration,
+optionally available at the WellKnown endpoint of your Authorization server (/.well-known/openid-configuration).
+
+* Issuer Identifier: Value of "issuer" in your OpenID Provider Configuration
+* Authorization endpoint URL: Value of "authorization_endpoint" in your OpenID Provider Configuration
+* Token endpoint URL: Value of "token_endpoint" in your OpenID Provider Configuration
+* Additional scopes: Scope/Claims to retrieve in addition to the mandatory "openid" scope. We recommend setting the two standard scopes: "profile email".
+* User Info Endpoint: If the user information is not returned in the ID Token or incompletely, calls can be made to request user information from additional endpoints
+** URL : Endpoint URL. An example could be the value of "userinfo_endpoint" in your OpenID Provider Configuration. But custom endpoints are also possible.
+** Enforce Subject Identifier: If the Subject Identifier "sub" is returned, a check can be performed to check the matching values.
+* End Session: See <<End Session>> for more information
+** End session URL: Value of "end_session_endpoint" in your OpenID Provider Configuration
+** ID Token Hint parameter name: "id_token_hint"
+** Post Logout Redirect URI parameter name: "post_logout_redirect_uri"
+
+==== Client
+
+This application uses the authentication method "client_secret_post" for the token retrieval
+During the creation of your Client/Application, you must have received or generated credentials/secret
+
+* Client Identifier
+* Client Secret
+
+==== User Creation
+
+You may configure the values used to created users inside Enonic. The values "${claimKey}" will be replaced by the user information retrieved.
+For example a template for display name could be "${given_name} ${family_name}"
+
+* Display name: Template for the display name
+* Email: Template for the email
+* Default groups: Groups to assign to this user on creation
+
+==== Rules
+
+Additional rules enforced on login
+
+* Enforce Email Verification: Check the claim "email_verified" (returned with the scope "email").
+
 
 === End Session
 
-OIDC Logout specifications are still in draft and might not be available on your authentication server.
+OIDC Front-Channel Logout specifications are still in draft. This might not be supported by your authentication server.
 You can check if the endpoint is available in the Open ID Configuration (.well-known/openid-configuration) under the field "end_session_endpoint"
-There might also be another custom endpoint available that achieve the same thing.
-
+There might also be another custom endpoint available that achieves the same purpose.
 The ID Provider Configuration schema tries to be dynamic enough to handle all cases.
 
 
@@ -109,6 +157,15 @@ Example: Azure AD
 
 * End Session URL: https://login.microsoftonline.com/{TenantID}/oauth2/logout
 * Post Logout Redirect URI parameter name: post_logout_redirect_uri
+
+Example: Difi/ID-porten/VER1
+
+* End Session URL: https://oidc-ver1.difi.no/idporten-oidc-provider/endsession
+* ID Token Hint parameter name: id_token_hint
+* Post Logout Redirect URI parameter name: post_logout_redirect_uri
+
+
+
 
 
 
