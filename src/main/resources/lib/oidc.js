@@ -73,11 +73,39 @@ function requestIDToken(params) {
     log.debug('Parsed claims: ' + JSON.stringify(claims));
 
     return {
-        value : responseBody.id_token,
+        idToken: responseBody.id_token,
+        accessToken: responseBody.access_token,
         claims: claims
     };
+}
+
+function requestUserInfo(params) {
+    const url = preconditions.checkParameter(params, 'url');
+    const accessToken = preconditions.checkParameter(params, 'accessToken');
+    const request = {
+        url: url,
+        headers: {
+            'Authorization': 'Bearer ' + accessToken
+        },
+        contentType: 'application/json'
+    };
+    log.debug('Sending user info request: ' + JSON.stringify(request));
+
+    const response = httpClient.request(request);
+    log.debug('Received user info response: ' + JSON.stringify(response));
+
+    return JSON.parse(response.body);
+}
+
+function mergeClaims(priorityClaims, additionalClaims) {
+    const claims = {};
+    Object.keys(additionalClaims).forEach(claimKey => claims[claimKey] = additionalClaims[claimKey]);
+    Object.keys(priorityClaims).forEach(claimKey => claims[claimKey] = priorityClaims[claimKey]);
+    return claims;
 }
 
 exports.generateToken = generateToken;
 exports.generateAuthorizationUrl = generateAuthorizationUrl;
 exports.requestIDToken = requestIDToken;
+exports.requestUserInfo = requestUserInfo;
+exports.mergeClaims = mergeClaims;

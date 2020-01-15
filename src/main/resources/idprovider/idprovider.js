@@ -72,13 +72,27 @@ function handleAuthenticationResponse(req) {
         nonce: context.nonce,
         code: code,
     });
-    log.debug('ID Token claims: ' + JSON.stringify(idToken.claims));
+    let claims = idToken.claims;
 
+    toArray(idProviderConfig.userInfoEndpoints).forEach(userInfoEndpoint => {
+        const userInfo = oidcLib.requestUserInfo({
+            url: userInfoEndpoint.url,
+            accessToken: idToken.accessToken
+        });
+        log.debug('User info claims: ' + JSON.stringify(userInfo));
 
-    loginLib.login(idToken.claims);
+        if (claims.sub !== userInfo.sub) {
+            throw 'Invalid sub in user info : ' + userInfo.sub;
+        }
+        
+        claims = oidcLib.mergeClaims(claims, userInfo);
+        log.debug('Merged claims: ' + JSON.stringify(claims));
+    });
+
+    loginLib.login(claims);
 
     if (idProviderConfig.endSession && idProviderConfig.endSession.idTokenHintKey) {
-        requestLib.storeIdToken(idToken.value);
+        requestLib.storeIdToken(idToken.idToken);
     }
 
     return {
