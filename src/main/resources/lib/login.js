@@ -5,7 +5,7 @@ const commonLib = require('/lib/xp/common');
 const portalLib = require('/lib/xp/portal');
 const preconditions = require('/lib/preconditions');
 
-const regExp = /\$\{([^\/]+)\}/g;
+const regExp = /\$\{([^\}]+)\}/g;
 
 function login(claims) {
 
@@ -77,10 +77,18 @@ function toArray(object) {
 }
 
 function getClaim(claims, claimKey) {
-    const claim = claims[claimKey];
-    if (claim == null) {
-        log.warning('Claim [' + claimKey + '] missing');
-    }
+    const claimKeys = claimKey.split('.');
+
+    let currentClaimObject = claims;
+    let claim = '';
+    claimKeys.forEach(currentClaimKey => {
+        currentClaimObject = currentClaimObject[currentClaimKey];
+        if (currentClaimObject == null) {
+            log.warning('Claim [' + claimKey + '] missing');
+            return '';
+        }
+        claim = currentClaimObject;
+    });
     return claim || '';
 }
 

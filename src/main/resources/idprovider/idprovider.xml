@@ -41,6 +41,12 @@
               <default></default>
               <occurrences minimum="1" maximum="1"/>
             </input>
+            <input name="enforceSubVerification" type="CheckBox">
+              <label>Enforce Subject Identifier Verification</label>
+              <help-text>Enforce Subject Identifier Verification</help-text>
+              <occurrences minimum="1" maximum="1"/>
+              <default>checked</default>
+            </input>
           </items>
           <occurrences minimum="0" maximum="0"/>
         </item-set>
@@ -118,7 +124,7 @@
             <input name="email" type="TextLine">
               <label>Email</label>
               <help-text>User email</help-text>
-              <occurrences minimum="1" maximum="1"/>
+              <occurrences minimum="0" maximum="1"/>
               <default>${email}</default>
             </input>
           </items>

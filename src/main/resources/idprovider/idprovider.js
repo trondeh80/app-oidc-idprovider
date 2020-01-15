@@ -81,10 +81,10 @@ function handleAuthenticationResponse(req) {
         });
         log.debug('User info claims: ' + JSON.stringify(userInfo));
 
-        if (claims.sub !== userInfo.sub) {
+        if (userInfoEndpoint.enforceSubVerification && claims.sub !== userInfo.sub) {
             throw 'Invalid sub in user info : ' + userInfo.sub;
         }
-        
+
         claims = oidcLib.mergeClaims(claims, userInfo);
         log.debug('Merged claims: ' + JSON.stringify(claims));
     });
