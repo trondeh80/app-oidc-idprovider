@@ -55,10 +55,10 @@ Example: Google
 
 Example: Azure AD
 
-- OpenID Provider Configuration URL: https://login.microsoftonline.com/[Tenant ID]/.well-known/openid-configuration
-- Issuer Identifier: https://sts.windows.net/[Tenant ID]/
-- Authorization endpoint URL: https://login.microsoftonline.com/[Tenant ID]/oauth2/authorize
-- Token endpoint URL: https://login.microsoftonline.com/[Tenant ID]/oauth2/token
+- OpenID Provider Configuration URL: https://login.microsoftonline.com/{TenantID}/.well-known/openid-configuration
+- Issuer Identifier: https://sts.windows.net/{TenantID}/
+- Authorization endpoint URL: https://login.microsoftonline.com/{TenantID}/oauth2/authorize
+- Token endpoint URL: https://login.microsoftonline.com/{TenantID}/oauth2/token
 
 
 === Enonic XP
@@ -107,7 +107,7 @@ Not available
 
 Example: Azure AD
 
-* End Session URL: https://login.microsoftonline.com/[Tenant ID]/oauth2/logout
+* End Session URL: https://login.microsoftonline.com/{TenantID}/oauth2/logout
 * Post Logout Redirect URI parameter name: post_logout_redirect_uri
 
 
