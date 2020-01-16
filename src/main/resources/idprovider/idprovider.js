@@ -74,20 +74,20 @@ function handleAuthenticationResponse(req) {
     });
 
     const claims = {
-        userInfo: idToken.claims
+        userinfo: idToken.claims
     };
-    if (idProviderConfig.userInfoUrl) {
-        const userInfoClaims = oidcLib.requestOAuth2({
-            url: idProviderConfig.userInfoUrl,
+    if (idProviderConfig.userinfoUrl) {
+        const userinfoClaims = oidcLib.requestOAuth2({
+            url: idProviderConfig.userinfoUrl,
             accessToken: idToken.accessToken
         });
-        log.debug('User info claims: ' + JSON.stringify(userInfoClaims));
+        log.debug('User info claims: ' + JSON.stringify(userinfoClaims));
 
-        if (idToken.claims.sub !== userInfoClaims.sub) {
-            throw 'Invalid sub in user info : ' + userInfoClaims.sub;
+        if (idToken.claims.sub !== userinfoClaims.sub) {
+            throw 'Invalid sub in user info : ' + userinfoClaims.sub;
         }
 
-        claims.userInfo = oidcLib.mergeClaims(claims.userInfo, userInfoClaims);
+        claims.userinfo = oidcLib.mergeClaims(claims.userinfo, userinfoClaims);
     }
 
     toArray(idProviderConfig.additionalEndpoints).forEach(additionalEndpoint => {

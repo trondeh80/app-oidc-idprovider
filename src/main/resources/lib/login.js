@@ -9,11 +9,11 @@ const regExp = /\$\{([^\}]+)\}/g;
 
 function login(claims) {
 
-    const userInfoClaims = claims.userInfo;
+    const userinfoClaims = claims.userinfo;
 
     //Retrieves the user
     const idProviderKey = portalLib.getIdProviderKey();
-    const userName = commonLib.sanitize(preconditions.checkParameter(userInfoClaims, 'sub'));
+    const userName = commonLib.sanitize(preconditions.checkParameter(userinfoClaims, 'sub'));
     const principalKey = 'user:' + idProviderKey + ':' + userName;
     const user = contextLib.runAsSu(() => authLib.getPrincipal(principalKey));
 
@@ -23,12 +23,12 @@ function login(claims) {
         //Creates the users
         const idProviderConfig = configLib.getIdProviderConfig();
         if (idProviderConfig.rules && idProviderConfig.rules.forceEmailVerification) {
-            preconditions.check(userInfoClaims.email_verified === true, 'Email must be verified');
+            preconditions.check(userinfoClaims.email_verified === true, 'Email must be verified');
         }
 
         const email = idProviderConfig.mappings.email.replace(regExp, (match, claimKey) => getClaim(claims, claimKey)) || null;
         const displayName = idProviderConfig.mappings.displayName.replace(regExp, (match, claimKey) => getClaim(claims, claimKey)) ||
-                            userInfoClaims.preferred_username || userInfoClaims.name || email || userInfoClaims.sub;
+                            userinfoClaims.preferred_username || userinfoClaims.name || email || userinfoClaims.sub;
 
         const user = contextLib.runAsSu(() => authLib.createUser({
             idProvider: idProviderKey,
@@ -82,15 +82,15 @@ function getClaim(claims, claimKey) {
     const claimKeys = claimKey.split('.');
 
     let currentClaimObject = claims;
-    let claim = '';
-    claimKeys.forEach(currentClaimKey => {
-        currentClaimObject = currentClaimObject[currentClaimKey];
+    let claim;
+    for (const claimKey of claimKeys) {
+        currentClaimObject = currentClaimObject[claimKey];
         if (currentClaimObject == null) {
             log.warning('Claim [' + claimKey + '] missing');
             return '';
         }
         claim = currentClaimObject;
-    });
+    }
     return claim || '';
 }
 
