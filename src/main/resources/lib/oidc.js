@@ -79,7 +79,7 @@ function requestIDToken(params) {
     };
 }
 
-function requestUserInfo(params) {
+function requestOAuth2(params) {
     const url = preconditions.checkParameter(params, 'url');
     const accessToken = preconditions.checkParameter(params, 'accessToken');
     const request = {
@@ -107,5 +107,5 @@ function mergeClaims(priorityClaims, additionalClaims) {
 exports.generateToken = generateToken;
 exports.generateAuthorizationUrl = generateAuthorizationUrl;
 exports.requestIDToken = requestIDToken;
-exports.requestUserInfo = requestUserInfo;
+exports.requestOAuth2 = requestOAuth2;
 exports.mergeClaims = mergeClaims;

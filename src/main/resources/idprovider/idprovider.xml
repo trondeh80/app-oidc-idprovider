@@ -25,6 +25,11 @@
           <default>https://oauth2.googleapis.com/token</default>
           <occurrences minimum="1" maximum="1"/>
         </input>
+        <input name="userInfoUrl" type="TextLine">
+          <label>User Info Endpoint URL</label>
+          <help-text>User Info endpoint URL. Omit if the information is already present in the TokenID</help-text>
+          <occurrences minimum="0" maximum="1"/>
+        </input>
         <input name="scopes" type="TextLine">
           <label>Additional scopes</label>
           <help-text>Scopes in addition to "openid". Space separated. We recommend adding at least the standard scopes "profile email".
@@ -32,20 +37,23 @@
           <default>profile email</default>
           <occurrences minimum="1" maximum="1"/>
         </input>
-        <item-set name="userInfoEndpoints">
-          <label>User Info endpoints</label>
-          <help-text>User Info endpoints called to retrieve claims if not present in the ID Token.</help-text>
+        <item-set name="additionalEndpoints">
+          <label>Additional OAuth2 endpoints</label>
+          <help-text>Additional OAuth2 endpoints used to retrieve additional user information using an access token.</help-text>
           <items>
+            <input name="name" type="TextLine">
+              <label>Name</label>
+              <help-text>Value used to store these claims under a same scope in the user profile.</help-text>
+              <default></default>
+              <config>
+                <regexp>^[a-zA-Z1-9-_]+$</regexp>
+              </config>
+              <occurrences minimum="1" maximum="1"/>
+            </input>
             <input name="url" type="TextLine">
               <label>Endpoint URL</label>
               <default></default>
               <occurrences minimum="1" maximum="1"/>
-            </input>
-            <input name="enforceSubVerification" type="CheckBox">
-              <label>Enforce Subject Identifier Verification</label>
-              <help-text>Enforce Subject Identifier Verification</help-text>
-              <occurrences minimum="1" maximum="1"/>
-              <default>checked</default>
             </input>
           </items>
           <occurrences minimum="0" maximum="0"/>
@@ -119,13 +127,13 @@
               <label>Display name</label>
               <help-text>Display name template</help-text>
               <occurrences minimum="1" maximum="1"/>
-              <default>${preferred_username}</default>
+              <default>${userInfo.preferred_username}</default>
             </input>
             <input name="email" type="TextLine">
               <label>Email</label>
               <help-text>User email</help-text>
               <occurrences minimum="0" maximum="1"/>
-              <default>${email}</default>
+              <default>${userInfo.email}</default>
             </input>
           </items>
           <occurrences minimum="1" maximum="1"/>
@@ -157,7 +165,5 @@
         </item-set>
       </items>
     </field-set>
-
-
   </form>
 </id-provider>

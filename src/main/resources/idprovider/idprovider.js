@@ -72,22 +72,33 @@ function handleAuthenticationResponse(req) {
         nonce: context.nonce,
         code: code,
     });
-    let claims = idToken.claims;
 
-    toArray(idProviderConfig.userInfoEndpoints).forEach(userInfoEndpoint => {
-        const userInfo = oidcLib.requestUserInfo({
-            url: userInfoEndpoint.url,
+    const claims = {
+        userInfo: idToken.claims
+    };
+    if (idProviderConfig.userInfoUrl) {
+        const userInfoClaims = oidcLib.requestOAuth2({
+            url: idProviderConfig.userInfoUrl,
             accessToken: idToken.accessToken
         });
-        log.debug('User info claims: ' + JSON.stringify(userInfo));
+        log.debug('User info claims: ' + JSON.stringify(userInfoClaims));
 
-        if (userInfoEndpoint.enforceSubVerification && claims.sub !== userInfo.sub) {
-            throw 'Invalid sub in user info : ' + userInfo.sub;
+        if (idToken.claims.sub !== userInfoClaims.sub) {
+            throw 'Invalid sub in user info : ' + userInfoClaims.sub;
         }
 
-        claims = oidcLib.mergeClaims(claims, userInfo);
-        log.debug('Merged claims: ' + JSON.stringify(claims));
+        claims.userInfo = oidcLib.mergeClaims(claims.userInfo, userInfoClaims);
+    }
+
+    toArray(idProviderConfig.additionalEndpoints).forEach(additionalEndpoint => {
+        const additionalClaims = oidcLib.requestOAuth2({
+            url: additionalEndpoint.url,
+            accessToken: idToken.accessToken
+        });
+        log.debug('OAuth2 endpoint [' + additionalEndpoint.name + '] claims: ' + JSON.stringify(additionalClaims));
+        claims[additionalEndpoint.name] = oidcLib.mergeClaims(claims[additionalEndpoint.name] || {}, additionalClaims);
     });
+    log.debug('All claims: ' + JSON.stringify(claims));
 
     loginLib.login(claims);
 

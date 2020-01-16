@@ -9,9 +9,11 @@ const regExp = /\$\{([^\}]+)\}/g;
 
 function login(claims) {
 
+    const userInfoClaims = claims.userInfo;
+
     //Retrieves the user
     const idProviderKey = portalLib.getIdProviderKey();
-    const userName = commonLib.sanitize(preconditions.checkParameter(claims, 'sub'));
+    const userName = commonLib.sanitize(preconditions.checkParameter(userInfoClaims, 'sub'));
     const principalKey = 'user:' + idProviderKey + ':' + userName;
     const user = contextLib.runAsSu(() => authLib.getPrincipal(principalKey));
 
@@ -21,12 +23,12 @@ function login(claims) {
         //Creates the users
         const idProviderConfig = configLib.getIdProviderConfig();
         if (idProviderConfig.rules && idProviderConfig.rules.forceEmailVerification) {
-            preconditions.check(claims.email_verified === true, 'Email must be verified');
+            preconditions.check(userInfoClaims.email_verified === true, 'Email must be verified');
         }
 
         const email = idProviderConfig.mappings.email.replace(regExp, (match, claimKey) => getClaim(claims, claimKey)) || null;
         const displayName = idProviderConfig.mappings.displayName.replace(regExp, (match, claimKey) => getClaim(claims, claimKey)) ||
-                            claims.preferred_username || claims.name || email || claims.sub;
+                            userInfoClaims.preferred_username || userInfoClaims.name || email || userInfoClaims.sub;
 
         const user = contextLib.runAsSu(() => authLib.createUser({
             idProvider: idProviderKey,
@@ -48,8 +50,8 @@ function login(claims) {
     //Updates the profile
     const profile = contextLib.runAsSu(() => authLib.modifyProfile({
         key: principalKey,
-        scope: 'com.enonic.app.oidcidprovider',
-        editor: () => claims //TODO
+        scope: 'oidc',
+        editor: () => claims
     }));
     log.debug('Modified profile of [' + principalKey + ']: ' + JSON.stringify(profile));
 
