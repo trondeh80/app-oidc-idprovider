@@ -2,7 +2,7 @@
 
 Authenticate your users using Open ID Connect.
 
-This ID Provider application, acting as a OIDC Relying Party. will verify the identity of End-Users based on the authentication performed by your OIDC Authorization Server.
+This ID Provider application, acting as a OIDC Relying Party, will verify the identity of End-Users based on the authentication performed by your OIDC Authorization Server.
 It will redirect unauthenticated users to the Authentication Server and obtain basic information in order to create a user within Enonic XP.
 This ID Provider application follows the Authorization Code Flow and uses the Client/Secret POST token auth method.
 
@@ -18,10 +18,11 @@ It will typically require the creation and configuration of a Client/Application
 Once authenticated by the Authorization Server, the End-User will be redirected to Enonic XP.
 During the configuration of your Client/Application, you will have to register this callback URL.
 The callback URL depends on the VHost mapping and the name of the ID Provider.
-It has the following format:  [VHost source]/_/idprovider/[ID Provider name]
+It has the following format:  ``[VHost source]/_/idprovider/[ID Provider name]``
 
-Example for a site: https://www.example.com/_/idprovider/myoidcprovider
-Example for admin:  https://www.example.com/admin/tool/_/idprovider/myoidcprovider
+Example for a site: ``https://www.example.com/_/idprovider/myoidcprovider``
+
+Example for admin:  ``https://www.example.com/admin/tool/_/idprovider/myoidcprovider``
 
 ==== Authorization Server - Information required for the ID Provider Config
 
@@ -32,8 +33,6 @@ You will need to gather the following information for the ID Provider configurat
 . The Issuer Identifier (URL)
 . The Authorization endpoint URL
 . The Token endpoint URL
-
-The client credentials are accessible after the creation/configuration of the Client.
 
 You might have been given only the Issuer URL instead of the list of endpoint URLs.
 In that case the endpoint URLs are accessible under: [Issuer URL]/.well-known/openid-configuration
@@ -71,18 +70,18 @@ Example: Difi/ID-porten/VER1
 === Enonic XP
 
 
-==== Application Installation
+==== Enonic XP - Application Installation
 
 . In the admin tool "Applications", click on "Install".
 . Select the tab "Enonic Market", find "OIDC ID Provider", and click on the link "Install".
 
-==== ID Provider creation
+==== Enonic XP - ID Provider creation
 
 . In the admin tool "Users", click on "New" and select "Id Provider".
 . Fill in the fields and, for the field "Applications", select the application "OIDC ID Provider".
 . Configure the ID Provider with the information gathered previously. See <<Enonic XP - ID Provider configuration>> for more information
 
-====  Virtual Host Mapping configuration
+==== Enonic XP - Virtual Host Mapping configuration
 
 . Edit the configuration file "com.enonic.xp.web.vhost.cfg", and set the new user store to your virtual host. (See https://developer.enonic.com/docs/xp/stable/deployment/vhosts[Virtual Host Configuration] for more information).
 
@@ -91,9 +90,9 @@ Example: Difi/ID-porten/VER1
     mapping.example.target = /portal/master/mysite
     mapping.example.idProvider.myoidcprovider = default
 
-=== Enonic XP - ID Provider configuration
+=== ID Provider configuration
 
-==== Authorization Server
+==== ID Provider configuration - Authorization Server
 
 Information mostly found from the OpenID Provider Configuration,
 optionally available at the WellKnown endpoint of your Authorization server (/.well-known/openid-configuration).
@@ -101,16 +100,17 @@ optionally available at the WellKnown endpoint of your Authorization server (/.w
 * Issuer Identifier: Value of "issuer" in your OpenID Provider Configuration
 * Authorization endpoint URL: Value of "authorization_endpoint" in your OpenID Provider Configuration
 * Token endpoint URL: Value of "token_endpoint" in your OpenID Provider Configuration
+* User Info endpoint: If the user information is not returned in the ID Token. Value of "userinfo_endpoint" in your OpenID Provider Configuration
 * Additional scopes: Scope/Claims to retrieve in addition to the mandatory "openid" scope. We recommend setting the two standard scopes: "profile email".
-* User Info Endpoint: If the user information is not returned in the ID Token or incompletely, calls can be made to request user information from additional endpoints
-** URL : Endpoint URL. An example could be the value of "userinfo_endpoint" in your OpenID Provider Configuration. But custom endpoints are also possible.
-** Enforce Subject Identifier: If the Subject Identifier "sub" is returned, a check can be performed to check the matching values.
+* Additional OAuth2 endpoints: Additional OAuth2 endpoints used to retrieve additional user information using the access token.
+** Name : Value used to store these claims under a same scope in the user profile.
+** URL : Endpoint URL.
 * End Session: See <<End Session>> for more information
 ** End session URL: Value of "end_session_endpoint" in your OpenID Provider Configuration
 ** ID Token Hint parameter name: "id_token_hint"
 ** Post Logout Redirect URI parameter name: "post_logout_redirect_uri"
 
-==== Client
+==== ID Provider configuration - Client
 
 This application uses the authentication method "client_secret_post" for the token retrieval
 During the creation of your Client/Application, you must have received or generated credentials/secret
@@ -118,10 +118,10 @@ During the creation of your Client/Application, you must have received or genera
 * Client Identifier
 * Client Secret
 
-==== User Creation
+==== ID Provider configuration - User Creation
 
-You may configure the values used to created users inside Enonic. The values "${claimKey}" will be replaced by the user information retrieved.
-For example a template for display name could be "${given_name} ${family_name}"
+You may configure the values used to created users inside Enonic. The values "${claimKey}" will be replaced by the information retrieved.
+For example a template for display name could be "${userinfo.given_name} ${userinfo.family_name}"
 
 * Display name: Template for the display name
 * Email: Template for the email

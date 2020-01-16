@@ -26,7 +26,7 @@
           <occurrences minimum="1" maximum="1"/>
         </input>
         <input name="userinfoUrl" type="TextLine">
-          <label>User Info Endpoint URL</label>
+          <label>User Info endpoint URL</label>
           <help-text>User Info endpoint URL. Omit if the information is already present in the TokenID</help-text>
           <occurrences minimum="0" maximum="1"/>
         </input>
@@ -39,7 +39,7 @@
         </input>
         <item-set name="additionalEndpoints">
           <label>Additional OAuth2 endpoints</label>
-          <help-text>Additional OAuth2 endpoints used to retrieve additional user information using an access token.</help-text>
+          <help-text>Additional OAuth2 endpoints used to retrieve additional user information using the access token.</help-text>
           <items>
             <input name="name" type="TextLine">
               <label>Name</label>
