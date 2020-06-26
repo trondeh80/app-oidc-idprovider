@@ -11,6 +11,7 @@ function redirectToAuthorizationEndpoint() {
 
     const idProviderConfig = configLib.getIdProviderConfig();
     const redirectUri = generateRedirectUri();
+    const includeOpenIdScope = false; // make config
 
     const state = oidcLib.generateToken();
     const nonce = oidcLib.generateToken();
@@ -28,7 +29,7 @@ function redirectToAuthorizationEndpoint() {
         authorizationUrl: idProviderConfig.authorizationUrl,
         clientId: idProviderConfig.clientId,
         redirectUri: redirectUri,
-        scopes: 'openid' + (idProviderConfig.scopes ? ' ' + idProviderConfig.scopes : ''),
+        scopes: (includeOpenIdScope ? 'openid' : '') + (idProviderConfig.scopes ? ' ' + idProviderConfig.scopes : ''),
         state: state,
         nonce: nonce
     });
@@ -52,6 +53,11 @@ function handleAuthenticationResponse(req) {
 
     const context = requestLib.removeContext(params.state);
     if (!context || context.state !== params.state) {
+        log.error('State issues: ');
+        log.error(JSON.stringify(context, null, 4));
+
+        log.error('Params: ');
+        log.error(JSON.stringify(params, null, 4));
         throw 'Invalid state parameter: ' + params.state;
     }
 
