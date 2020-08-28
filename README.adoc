@@ -1,4 +1,14 @@
-= Open ID Connect ID Provider
+= Open ID Connect ID Provider AID edition
+
+This app has been modified to work with AID and NJFF's access system in dynamics.
+
+#### Development
+Install transpiling tools:
+`npm i`
+
+To start watching .es6 files:
+`npm run watch`
+
 
 Authenticate your users using Open ID Connect.
 

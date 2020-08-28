@@ -83,6 +83,8 @@ function handleAuthenticationResponse(req) {
         userinfo: idToken.claims
     };
     if (idProviderConfig.userinfoUrl) {
+      log.info('User info url');
+      log.info(JSON.stringify(idProviderConfig, null, 4));
         const userinfoClaims = oidcLib.requestOAuth2({
             url: idProviderConfig.userinfoUrl,
             accessToken: idToken.accessToken
