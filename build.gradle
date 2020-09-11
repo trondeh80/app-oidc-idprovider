@@ -13,6 +13,7 @@ app {
 }
 
 dependencies {
+    webjar "org.webjars:momentjs:2.12.0"
     compile "com.enonic.xp:core-api:${xpVersion}"
     compile "com.enonic.xp:portal-api:${xpVersion}"
     include "com.enonic.xp:lib-auth:${xpVersion}"
@@ -21,6 +22,7 @@ dependencies {
     include "com.enonic.xp:lib-portal:${xpVersion}"
     include "com.enonic.lib:lib-http-client:2.0.0"
     include "com.nimbusds:oauth2-oidc-sdk:6.16.4"
+    include 'com.enonic.lib:lib-text-encoding:2.0.0'
 }
 
 repositories {
