@@ -1,5 +1,6 @@
 const preconditions = require('/lib/preconditions');
 const httpClient = require('/lib/http-client');
+import { base64Encode } from '/lib/text-encoding';
 
 function generateToken() {
   return Java.type('com.enonic.app.oidcidprovider.OIDCUtils').generateToken();
@@ -50,26 +51,26 @@ function requestIDToken(params) {
   log.info('Request Id Token:');
   log.info(JSON.stringify(params, null, 4));
 
+  const authHeader = base64Encode(`${clientId}:${clientSecret}`);
+
   //https://openid.net/specs/openid-connect-core-1_0.html#TokenRequest
   const body = 'grant_type=authorization_code'
     + '&code=' + code
-    + '&redirect_uri=' + redirectUri
-    + '&client_id=' + clientId
-    + '&client_secret=' + clientSecret;
+    + '&redirect_uri=' + redirectUri;
 
   const request = {
     url: tokenUrl,
     method: 'POST',
-    // headers: {
-    //     //https://tools.ietf.org/html/rfc6749#section-2.3.1
-    // },
+    headers: {
+         Authorization: `Basic ${authHeader}`
+    },
     body: body,
-    contentType: 'application/x-www-form-urlencoded'
+    contentType: 'multipart/form-data'
   };
-  log.debug('Sending token request: ' + JSON.stringify(request));
+  log.info('Sending token request: ' + JSON.stringify(request));
 
   const response = httpClient.request(request);
-  log.debug('Received token response: ' + JSON.stringify(response));
+  log.info('Received token response: ' + JSON.stringify(response));
 
   if (response.status !== 200) {
     throw 'Error ' + response.status + ' while retrieving the ID Token';
@@ -86,7 +87,7 @@ function requestIDToken(params) {
 
   //const claims = parseClaims(responseBody.access_token, issuer, clientId, nonce);
   const claims = '';
-  log.debug('Parsed claims: ' + JSON.stringify(claims));
+  log.info('Parsed claims: ' + JSON.stringify(claims));
 
   return {
     idToken: responseBody.id_token,
@@ -105,10 +106,10 @@ function requestOAuth2(params) {
     },
     contentType: 'application/json'
   };
-  log.debug('Sending user info request: ' + JSON.stringify(request));
+  log.info('Sending user info request: ' + JSON.stringify(request));
 
   const response = httpClient.request(request);
-  log.debug('Received user info response: ' + JSON.stringify(response));
+  log.info('Received user info response: ' + JSON.stringify(response));
 
   return JSON.parse(response.body);
 }
