@@ -52,18 +52,10 @@ function handleAuthenticationResponse(req) {
     const params = getRequestParams(req);
     const context = requestLib.removeContext(params.state);
 
-    /*
     // Removing this check as it always fails with AID.
     if (!context || context.state !== params.state) {
-        log.error('State issues: ');
-        log.error(JSON.stringify(context, null, 4));
-
-        log.error('Params: ');
-        log.error(JSON.stringify(params, null, 4));
         throw 'Invalid state parameter: ' + params.state;
     }
-
-     */
 
     if (params.error) {
         throw 'Authentication error [' + params.error + ']' + (params.error_description ? ': ' + params.error_description : '');
@@ -71,7 +63,7 @@ function handleAuthenticationResponse(req) {
 
     const idProviderConfig = configLib.getIdProviderConfig();
     const code = params.code;
-    log.info('H1');
+
     //https://tools.ietf.org/html/rfc6749#section-2.3.1
     const idToken = oidcLib.requestIDToken({
         issuer: idProviderConfig.issuer,
@@ -86,6 +78,7 @@ function handleAuthenticationResponse(req) {
     const claims = {
         userinfo: idToken.claims
     };
+
     if (idProviderConfig.userinfoUrl) {
       log.info('User info url');
       log.info(JSON.stringify(idProviderConfig, null, 4));

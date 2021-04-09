@@ -21,6 +21,8 @@ function login(claims) {
   //If the user does not exist
   if (!user) {
 
+    trigger(AUTH_EVENT.BEFORE_CREATE_USER, null);
+
     //Creates the users
     const idProviderConfig = configLib.getIdProviderConfig();
     if (idProviderConfig.rules && idProviderConfig.rules.forceEmailVerification) {
@@ -46,6 +48,9 @@ function login(claims) {
         log.debug('User [' + user.key + '] added to group [' + defaultGroup + ']');
       });
     });
+
+
+    trigger(AUTH_EVENT.USER_CREATED, user);
   }
 
   //Updates the profile
@@ -64,6 +69,7 @@ function login(claims) {
   });
   if (loginResult.authenticated) {
     log.debug('Logged in user [' + principalKey + ']');
+    trigger(AUTH_EVENT.USER_LOGIN, null);
   } else {
     throw 'Error while logging user [' + principalKey + ']';
   }
@@ -73,10 +79,7 @@ function toArray(object) {
   if (!object) {
     return [];
   }
-  if (object.constructor === Array) {
-    return object;
-  }
-  return [object];
+  return [].concat(object);
 }
 
 function getClaim(claims, claimKey) {

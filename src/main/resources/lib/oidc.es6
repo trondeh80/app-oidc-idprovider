@@ -85,8 +85,8 @@ function requestIDToken(params) {
     throw 'Token error [' + params.error + ']' + (params.error_description ? ': ' + params.error_description : '');
   }
 
-  //const claims = parseClaims(responseBody.access_token, issuer, clientId, nonce);
-  const claims = '';
+  const claims = parseClaims(responseBody.access_token, issuer, clientId, nonce);
+  // const claims = '';
   log.info('Parsed claims: ' + JSON.stringify(claims));
 
   return {
