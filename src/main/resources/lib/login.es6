@@ -8,7 +8,6 @@ const preconditions = require('/lib/preconditions');
 const regExp = /\$\{([^\}]+)\}/g;
 
 function login(claims) {
-
     const userinfoClaims = claims.userinfo;
 
     log.info('User info received:');

@@ -28,6 +28,11 @@ function generateAuthorizationUrl(params) {
         + '&nonce=' + nonce;
 }
 
+function getAuthentication(clientId, clientSecret) {
+    const authString = `${clientId}:${clientSecret}`;
+    return Java.type('com.enonic.app.oidcidprovider.OIDCUtils').base64EncodeString(authString);
+}
+
 function requestIDToken(params) {
     const issuer = preconditions.checkParameter(params, 'issuer');
     const tokenUrl = preconditions.checkParameter(params, 'tokenUrl');
@@ -38,27 +43,26 @@ function requestIDToken(params) {
     const code = preconditions.checkParameter(params, 'code');
     //TODO Handle different authentication methods
 
+    const isBasicAuth = true; // Todo add config option for switching auth method.
+
     //https://openid.net/specs/openid-connect-core-1_0.html#TokenRequest
-    const body = 'grant_type=authorization_code'
+    let body = 'grant_type=authorization_code'
         + '&code=' + code
         + '&redirect_uri=' + redirectUri;
-        // + '&client_id=' + clientId
-        // + '&client_secret=' + clientSecret;
 
-    // Todo: kommentere ut client_id og client_secret fra body?
+    if (isBasicAuth === false) {
+        body = body + '&client_id=' + clientId
+            + '&client_secret=' + clientSecret;
+    }
 
-    const authString = `${clientId}:${clientSecret}`;
-    const clientCredentials = Java.type('com.enonic.app.oidcidprovider.OIDCUtils').base64EncodeString(authString);
-    log.info('ClientCreds: ' + clientCredentials);
+    const headers = isBasicAuth ?
+        { Authorization: `Basic ${getAuthentication(clientId, clientSecret)}` } : {};
 
     const request = {
         url: tokenUrl,
         method: 'POST',
-        headers: {
-            Authorization: `Basic ${clientCredentials}`
-            //https://tools.ietf.org/html/rfc6749#section-2.3.1
-        },
-        body: body,
+        headers,
+        body,
         contentType: 'application/x-www-form-urlencoded'
     };
     log.info('Sending token request: ' + JSON.stringify(request));
