@@ -1,5 +1,11 @@
 "use strict";
 
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.getUser = getUser;
+exports.getOidcUserId = getOidcUserId;
+
 function _createForOfIteratorHelper(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
 function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
@@ -20,53 +26,82 @@ var preconditions = require('/lib/preconditions');
 
 var regExp = /\$\{([^\}]+)\}/g;
 
+function getUser(_ref) {
+  var userinfo = _ref.userinfo;
+  var principalKey = getPrincipalKey({
+    userinfo: userinfo
+  });
+  return contextLib.runAsSu(function () {
+    return authLib.getPrincipal(principalKey);
+  });
+}
+
+function getOidcUserId(_ref2) {
+  var _userinfo$sub;
+
+  var userinfo = _ref2.userinfo;
+  return (_userinfo$sub = userinfo === null || userinfo === void 0 ? void 0 : userinfo.sub) !== null && _userinfo$sub !== void 0 ? _userinfo$sub : null;
+}
+
+function getUserName(_ref3) {
+  var userinfo = _ref3.userinfo;
+  return commonLib.sanitize(preconditions.checkParameter(userinfo, 'sub'));
+}
+
+function getPrincipalKey(_ref4) {
+  var userinfo = _ref4.userinfo;
+  var idProviderKey = portalLib.getIdProviderKey();
+  return 'user:' + idProviderKey + ':' + getUserName(userinfo);
+}
+
+function createUser(claims) {
+  var userinfo = claims.userinfo; // const oidcUserId = getOidcUserId(claims);
+  //Creates the users
+
+  var idProviderConfig = configLib.getIdProviderConfig();
+
+  if (idProviderConfig.rules && idProviderConfig.rules.forceEmailVerification) {
+    preconditions.check(userinfo.email_verified === true, 'Email must be verified');
+  }
+
+  var email = idProviderConfig.mappings.email.replace(regExp, function (match, claimKey) {
+    return getClaim(claims, claimKey);
+  }) || null;
+  var displayName = idProviderConfig.mappings.displayName.replace(regExp, function (match, claimKey) {
+    return getClaim(claims, claimKey);
+  }) || userinfo.preferred_username || userinfo.name || email || userinfo.sub;
+  var userName = getUserName({
+    userInfo: userInfo
+  });
+  var user = contextLib.runAsSu(function () {
+    return authLib.createUser({
+      idProvider: portalLib.getIdProviderKey(),
+      name: userName,
+      displayName: displayName,
+      email: email
+    });
+  });
+  log.info('User [' + user.key + '] created');
+  var defaultGroups = idProviderConfig.defaultGroups;
+  contextLib.runAsSu(function () {
+    toArray(defaultGroups).forEach(function (defaultGroup) {
+      authLib.addMembers(defaultGroup, [user.key]);
+      log.debug('User [' + user.key + '] added to group [' + defaultGroup + ']');
+    });
+  });
+}
+
 function login(claims) {
+  var user = getUser(claims);
+  var principalKey = getPrincipalKey(claims);
   var userinfoClaims = claims.userinfo;
   log.info('User info received:');
-  log.info(JSON.stringify(userinfoClaims, null, 4)); //Retrieves the user
-
-  var idProviderKey = portalLib.getIdProviderKey();
-  var userName = commonLib.sanitize(preconditions.checkParameter(userinfoClaims, 'sub'));
-  var principalKey = 'user:' + idProviderKey + ':' + userName;
-  var user = contextLib.runAsSu(function () {
-    return authLib.getPrincipal(principalKey);
-  }); //If the user does not exist
+  log.info(JSON.stringify(userinfoClaims, null, 4)); // If the user does not exist
 
   if (!user) {
-    //Creates the users
-    var idProviderConfig = configLib.getIdProviderConfig();
-
-    if (idProviderConfig.rules && idProviderConfig.rules.forceEmailVerification) {
-      preconditions.check(userinfoClaims.email_verified === true, 'Email must be verified');
-    }
-
-    var email = idProviderConfig.mappings.email.replace(regExp, function (match, claimKey) {
-      return getClaim(claims, claimKey);
-    }) || null;
-    var displayName = idProviderConfig.mappings.displayName.replace(regExp, function (match, claimKey) {
-      return getClaim(claims, claimKey);
-    }) || userinfoClaims.preferred_username || userinfoClaims.name || email || userinfoClaims.sub; // Todo: Here we need to call the columbus API and fetch data about this user.
-    // - we will only create the user if he belongs in a specific group
-
-    var _user = contextLib.runAsSu(function () {
-      return authLib.createUser({
-        idProvider: idProviderKey,
-        name: userName,
-        displayName: displayName,
-        email: email
-      });
-    });
-
-    log.info('User [' + _user.key + '] created');
-    var defaultGroups = idProviderConfig.defaultGroups;
-    contextLib.runAsSu(function () {
-      toArray(defaultGroups).forEach(function (defaultGroup) {
-        authLib.addMembers(defaultGroup, [_user.key]);
-        log.debug('User [' + _user.key + '] added to group [' + defaultGroup + ']');
-      });
-    });
+    createUser(claims);
   } // Todo: Verify that the user belongs to the publishing groups in dynamics. If not, deny login.
-  //Updates the profile
+  //  Updates the profile
 
 
   var profile = contextLib.runAsSu(function () {
@@ -78,11 +113,11 @@ function login(claims) {
       }
     });
   });
-  log.debug('Modified profile of [' + principalKey + ']: ' + JSON.stringify(profile)); //Logs in the user
+  log.debug('Modified profile of [' + principalKey + ']: ' + JSON.stringify(profile)); // Logs in the user
 
   var loginResult = authLib.login({
-    user: userName,
-    idProvider: idProviderKey,
+    user: getUserName(claims),
+    idProvider: portalLib.getIdProviderKey(),
     skipAuth: true
   });
 

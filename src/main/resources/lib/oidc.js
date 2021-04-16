@@ -24,6 +24,11 @@ function generateAuthorizationUrl(params) {
   return authorizationUrl + '?scope=' + encodeURIComponent(scope) + '&response_type=code' + '&client_id=' + encodeURIComponent(clientId) + '&redirect_uri=' + encodeURIComponent(redirectUri) + '&state=' + state + '&nonce=' + nonce;
 }
 
+function getAuthentication(clientId, clientSecret) {
+  var authString = "".concat(clientId, ":").concat(clientSecret);
+  return Java.type('com.enonic.app.oidcidprovider.OIDCUtils').base64EncodeString(authString);
+}
+
 function requestIDToken(params) {
   var issuer = preconditions.checkParameter(params, 'issuer');
   var tokenUrl = preconditions.checkParameter(params, 'tokenUrl');
@@ -32,22 +37,23 @@ function requestIDToken(params) {
   var redirectUri = preconditions.checkParameter(params, 'redirectUri');
   var nonce = preconditions.checkParameter(params, 'nonce');
   var code = preconditions.checkParameter(params, 'code'); //TODO Handle different authentication methods
+
+  var isBasicAuth = true; // Todo add config option for switching auth method.
   //https://openid.net/specs/openid-connect-core-1_0.html#TokenRequest
 
-  var body = 'grant_type=authorization_code' + '&code=' + code + '&redirect_uri=' + redirectUri; // + '&client_id=' + clientId
-  // + '&client_secret=' + clientSecret;
-  // Todo: kommentere ut client_id og client_secret fra body?
+  var body = 'grant_type=authorization_code' + '&code=' + code + '&redirect_uri=' + redirectUri;
 
-  var authString = "".concat(clientId, ":").concat(clientSecret);
-  var clientCredentials = Java.type('com.enonic.app.oidcidprovider.OIDCUtils').base64EncodeString(authString);
-  log.info('ClientCreds: ' + clientCredentials);
+  if (isBasicAuth === false) {
+    body = body + '&client_id=' + clientId + '&client_secret=' + clientSecret;
+  }
+
+  var headers = isBasicAuth ? {
+    Authorization: "Basic ".concat(getAuthentication(clientId, clientSecret))
+  } : {};
   var request = {
     url: tokenUrl,
     method: 'POST',
-    headers: {
-      Authorization: "Basic ".concat(clientCredentials) //https://tools.ietf.org/html/rfc6749#section-2.3.1
-
-    },
+    headers: headers,
     body: body,
     contentType: 'application/x-www-form-urlencoded'
   };
