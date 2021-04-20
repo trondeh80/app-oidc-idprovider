@@ -1,5 +1,6 @@
 import cache from '../lib/login-util/cache';
 import { fetchAccessToken } from "../lib/dynamics/get-token";
+import { createUser } from "../lib/login";
 
 const configLib = require('/lib/config');
 const oidcLib = require('/lib/oidc');
@@ -8,6 +9,10 @@ const requestLib = require('/lib/request');
 const preconditions = require('/lib/preconditions');
 const authLib = require('/lib/xp/auth');
 const portalLib = require('/lib/xp/portal');
+
+const ACTIONS = {
+    AFTER_VERIFY: 1
+}
 
 function redirectToAuthorizationEndpoint() {
     log.debug('Handling 401 error...');
@@ -42,20 +47,55 @@ function redirectToAuthorizationEndpoint() {
     };
 }
 
-function generateRedirectUri() {
+function generateRedirectUri(params = {}) {
     return portalLib.idProviderUrl({
         idProviderKey: portalLib.getIdProviderKey(),
-        type: 'absolute'
+        type: 'absolute',
+        params
     });
+}
+
+/**
+ * Called when a user returns successfully from validation
+ * @param params
+ */
+function userVerified({ params }) {
+    const { uuid, dynamicsId } = params; // Todo: Find out how the dynamics ID is returned!!
+
+    const userData = cache.get(uuid, () => null);
+    if (!userData) {
+        throw 'Session expired. Please try again';
+    }
+
+    const {
+        claims,
+        idToken,
+        context
+    } = userData;
+
+    createUser(claims, dynamicsId);
+    completeLogin({ claims, idToken, context });
 }
 
 
 // GET function exported / entry point for user:
 function handleAuthenticationResponse(req) {
-    const params = getRequestParams(req);
+    log.info('incoming request');
+    log.info(JSON.stringify(req, null, 4));
 
+    const { params: { action } } = req;
+    if (action === ACTIONS.AFTER_VERIFY) {
+        return userVerified(req);
+    }
+
+    const params = getRequestParams(req);
     const context = requestLib.removeContext(params.state);
-    if (!context || context.state !== params.state) {
+
+    if (!context) {
+        throw 'no context';
+    }
+
+    if (context.state !== params.state) {
         throw 'Invalid state parameter: ' + params.state;
     }
 
@@ -80,6 +120,9 @@ function handleAuthenticationResponse(req) {
     const claims = {
         userinfo: idToken.claims
     };
+
+    log.info('Resulting claims');
+    log.info(JSON.stringify(claims, null, 4));
 
     if (idProviderConfig.userinfoUrl) {
         const userinfoClaims = oidcLib.requestOAuth2({
@@ -111,12 +154,29 @@ function handleAuthenticationResponse(req) {
     // endif;
     if (!loginLib.getUser(claims)) {
         // no user found here. Lets validate :)
-        cache.get(loginLib.getOidcUserId(claims), () => ({
+        const uuid = loginLib.getOidcUserId(claims);
+        cache.get(uuid, () => ({
             claims,
-            idToken
+            idToken,
+            context
         }));
-    }
 
+        const returnUrl = generateRedirectUri({
+            uuid,
+            action: ACTIONS.AFTER_VERIFY
+        });
+
+        return {
+            redirect: `https://minside.njff.no/account/findrelation?id=${uuid}&phone=47466546&redirect=${returnUrl}`
+        };
+    }
+    // User exists, we need to validate the account in dynamics.
+
+    return completeLogin({ claims, idToken, context });
+}
+
+function completeLogin({ claims, idToken, context }) {
+    const idProviderConfig = configLib.getIdProviderConfig();
     loginLib.login(claims);
 
     if (idProviderConfig.endSession && idProviderConfig.endSession.idTokenHintKey) {

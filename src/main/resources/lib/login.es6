@@ -23,10 +23,10 @@ function getUserName({ userinfo }) {
 
 function getPrincipalKey({ userinfo }) {
     const idProviderKey = portalLib.getIdProviderKey();
-    return 'user:' + idProviderKey + ':' + getUserName(userinfo);
+    return 'user:' + idProviderKey + ':' + getUserName({ userinfo });
 }
 
-function createUser(claims) {
+export function createUser(claims, dynamicsId) {
     const { userinfo } = claims;
     // const oidcUserId = getOidcUserId(claims);
 
@@ -50,17 +50,21 @@ function createUser(claims) {
     }));
     log.info('User [' + user.key + '] created');
 
-    var defaultGroups = idProviderConfig.defaultGroups;
+    // Todo: Save dynamicsId => userId in separate repository
+
+    const defaultGroups = idProviderConfig.defaultGroups;
     contextLib.runAsSu(() => {
         toArray(defaultGroups).forEach(function (defaultGroup) {
             authLib.addMembers(defaultGroup, [user.key]);
             log.debug('User [' + user.key + '] added to group [' + defaultGroup + ']');
         });
     });
+
+    return user;
 }
 
-function login(claims) {
-    const user = getUser(claims);
+export function login(claims) {
+    // const user = getUser(claims);
     const principalKey = getPrincipalKey(claims);
     const userinfoClaims = claims.userinfo;
 
@@ -68,9 +72,9 @@ function login(claims) {
     log.info(JSON.stringify(userinfoClaims, null, 4));
 
     // If the user does not exist
-    if (!user) {
-        createUser(claims)
-    }
+    // if (!user) {
+    //     createUser(claims)
+    // }
 
     // Todo: Verify that the user belongs to the publishing groups in dynamics. If not, deny login.
 
@@ -122,5 +126,3 @@ function getClaim(claims, claimKey) {
     }
     return claim || '';
 }
-
-exports.login = login;

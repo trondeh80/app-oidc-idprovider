@@ -4,6 +4,8 @@ var _cache = _interopRequireDefault(require("../lib/login-util/cache"));
 
 var _getToken = require("../lib/dynamics/get-token");
 
+var _login = require("../lib/login");
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
 var configLib = require('/lib/config');
@@ -19,6 +21,10 @@ var preconditions = require('/lib/preconditions');
 var authLib = require('/lib/xp/auth');
 
 var portalLib = require('/lib/xp/portal');
+
+var ACTIONS = {
+  AFTER_VERIFY: 1
+};
 
 function redirectToAuthorizationEndpoint() {
   log.debug('Handling 401 error...');
@@ -50,18 +56,61 @@ function redirectToAuthorizationEndpoint() {
 }
 
 function generateRedirectUri() {
+  var params = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
   return portalLib.idProviderUrl({
     idProviderKey: portalLib.getIdProviderKey(),
-    type: 'absolute'
+    type: 'absolute',
+    params: params
+  });
+}
+/**
+ * Called when a user returns successfully from validation
+ * @param params
+ */
+
+
+function userVerified(_ref) {
+  var params = _ref.params;
+  var uuid = params.uuid,
+      dynamicsId = params.dynamicsId; // Todo: Find out how the dynamics ID is returned!!
+
+  var userData = _cache["default"].get(uuid, function () {
+    return null;
+  });
+
+  if (!userData) {
+    throw 'Session expired. Please try again';
+  }
+
+  var claims = userData.claims,
+      idToken = userData.idToken,
+      context = userData.context;
+  (0, _login.createUser)(claims, dynamicsId);
+  completeLogin({
+    claims: claims,
+    idToken: idToken,
+    context: context
   });
 } // GET function exported / entry point for user:
 
 
 function handleAuthenticationResponse(req) {
+  log.info('incoming request');
+  log.info(JSON.stringify(req, null, 4));
+  var action = req.params.action;
+
+  if (action === ACTIONS.AFTER_VERIFY) {
+    return userVerified(req);
+  }
+
   var params = getRequestParams(req);
   var context = requestLib.removeContext(params.state);
 
-  if (!context || context.state !== params.state) {
+  if (!context) {
+    throw 'no context';
+  }
+
+  if (context.state !== params.state) {
     throw 'Invalid state parameter: ' + params.state;
   }
 
@@ -84,6 +133,8 @@ function handleAuthenticationResponse(req) {
   var claims = {
     userinfo: idToken.claims
   };
+  log.info('Resulting claims');
+  log.info(JSON.stringify(claims, null, 4));
 
   if (idProviderConfig.userinfoUrl) {
     var userinfoClaims = oidcLib.requestOAuth2({
@@ -114,14 +165,38 @@ function handleAuthenticationResponse(req) {
 
   if (!loginLib.getUser(claims)) {
     // no user found here. Lets validate :)
-    _cache["default"].get(loginLib.getOidcUserId(claims), function () {
+    var uuid = loginLib.getOidcUserId(claims);
+
+    _cache["default"].get(uuid, function () {
       return {
         claims: claims,
-        idToken: idToken
+        idToken: idToken,
+        context: context
       };
     });
-  }
 
+    var returnUrl = generateRedirectUri({
+      uuid: uuid,
+      action: ACTIONS.AFTER_VERIFY
+    });
+    return {
+      redirect: "https://minside.njff.no/account/findrelation?id=".concat(uuid, "&phone=47466546&redirect=").concat(returnUrl)
+    };
+  } // User exists, we need to validate the account in dynamics.
+
+
+  return completeLogin({
+    claims: claims,
+    idToken: idToken,
+    context: context
+  });
+}
+
+function completeLogin(_ref2) {
+  var claims = _ref2.claims,
+      idToken = _ref2.idToken,
+      context = _ref2.context;
+  var idProviderConfig = configLib.getIdProviderConfig();
   loginLib.login(claims);
 
   if (idProviderConfig.endSession && idProviderConfig.endSession.idTokenHintKey) {
@@ -133,10 +208,10 @@ function handleAuthenticationResponse(req) {
   };
 }
 
-function handleIncomingVerifiedUser(_ref) {
-  var _ref$params = _ref.params,
-      oidcId = _ref$params.oidcId,
-      dynamicsId = _ref$params.dynamicsId;
+function handleIncomingVerifiedUser(_ref3) {
+  var _ref3$params = _ref3.params,
+      oidcId = _ref3$params.oidcId,
+      dynamicsId = _ref3$params.dynamicsId;
 
   var userData = _cache["default"].get(oidcId, function () {
     return null;

@@ -5,6 +5,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.getUser = getUser;
 exports.getOidcUserId = getOidcUserId;
+exports.createUser = createUser;
+exports.login = login;
 
 function _createForOfIteratorHelper(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
@@ -51,10 +53,12 @@ function getUserName(_ref3) {
 function getPrincipalKey(_ref4) {
   var userinfo = _ref4.userinfo;
   var idProviderKey = portalLib.getIdProviderKey();
-  return 'user:' + idProviderKey + ':' + getUserName(userinfo);
+  return 'user:' + idProviderKey + ':' + getUserName({
+    userinfo: userinfo
+  });
 }
 
-function createUser(claims) {
+function createUser(claims, dynamicsId) {
   var userinfo = claims.userinfo; // const oidcUserId = getOidcUserId(claims);
   //Creates the users
 
@@ -81,7 +85,8 @@ function createUser(claims) {
       email: email
     });
   });
-  log.info('User [' + user.key + '] created');
+  log.info('User [' + user.key + '] created'); // Todo: Save dynamicsId => userId in separate repository
+
   var defaultGroups = idProviderConfig.defaultGroups;
   contextLib.runAsSu(function () {
     toArray(defaultGroups).forEach(function (defaultGroup) {
@@ -89,20 +94,20 @@ function createUser(claims) {
       log.debug('User [' + user.key + '] added to group [' + defaultGroup + ']');
     });
   });
+  return user;
 }
 
 function login(claims) {
-  var user = getUser(claims);
+  // const user = getUser(claims);
   var principalKey = getPrincipalKey(claims);
   var userinfoClaims = claims.userinfo;
   log.info('User info received:');
   log.info(JSON.stringify(userinfoClaims, null, 4)); // If the user does not exist
-
-  if (!user) {
-    createUser(claims);
-  } // Todo: Verify that the user belongs to the publishing groups in dynamics. If not, deny login.
+  // if (!user) {
+  //     createUser(claims)
+  // }
+  // Todo: Verify that the user belongs to the publishing groups in dynamics. If not, deny login.
   //  Updates the profile
-
 
   var profile = contextLib.runAsSu(function () {
     return authLib.modifyProfile({
@@ -168,5 +173,3 @@ function getClaim(claims, claimKey) {
 
   return claim || '';
 }
-
-exports.login = login;
