@@ -1,6 +1,5 @@
 import { getDynamicsUser, getHasPublishForUnion } from './dynamics/get-dynamics-user';
 import { getDefaultUserGroup } from './member-config';
-import { run } from '/lib/xp/context';
 
 const authLib = require('/lib/xp/auth');
 const contextLib = require('/lib/context');
@@ -149,8 +148,14 @@ function findUserGroups(memberShips) {
     const providerKey = portalLib.getIdProviderKey();
     return []
         .concat(memberShips)
-        .map(({ internalID }) =>
-            authLib.getPrincipal(`group:${providerKey}:${internalID}`))
+        .map(({ internalID }) => {
+            const group = authLib.getPrincipal(`group:${providerKey}:${internalID}`);
+            if (!group) {
+                return null;
+            }
+            const { key } = group;
+            return key;
+        })
         .filter((group) => !!group);
 }
 

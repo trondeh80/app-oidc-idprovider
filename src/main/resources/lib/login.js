@@ -14,8 +14,6 @@ var _getDynamicsUser = require("./dynamics/get-dynamics-user");
 
 var _memberConfig = require("./member-config");
 
-var _context = require("/lib/xp/context");
-
 var authLib = require('/lib/xp/auth');
 
 var contextLib = require('/lib/context');
@@ -177,7 +175,14 @@ function findUserGroups(memberShips) {
   var providerKey = portalLib.getIdProviderKey();
   return [].concat(memberShips).map(function (_ref4) {
     var internalID = _ref4.internalID;
-    return authLib.getPrincipal("group:".concat(providerKey, ":").concat(internalID));
+    var group = authLib.getPrincipal("group:".concat(providerKey, ":").concat(internalID));
+
+    if (!group) {
+      return null;
+    }
+
+    var key = group.key;
+    return key;
   }).filter(function (group) {
     return !!group;
   });

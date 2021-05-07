@@ -108,8 +108,6 @@ function userVerified(_ref) {
 
 
 function handleAuthenticationResponse(req) {
-  log.info('incoming request');
-  log.info(JSON.stringify(req, null, 4));
   var action = req.params.action;
 
   if (action === ACTIONS.AFTER_VERIFY) {
@@ -146,8 +144,6 @@ function handleAuthenticationResponse(req) {
   var claims = {
     userinfo: idToken.claims
   };
-  log.info('Resulting claims');
-  log.info(JSON.stringify(claims, null, 4));
 
   if (idProviderConfig.userinfoUrl) {
     var userinfoClaims = oidcLib.requestOAuth2({
@@ -176,9 +172,7 @@ function handleAuthenticationResponse(req) {
   var user = loginLib.findUserBySub(uuid);
 
   if (!user) {
-    log.info('No user found.');
-    log.info('Storing userdata in cache: ' + uuid); // no user found here. Lets validate :)
-
+    // no user found here. Lets validate :)
     _cache["default"].get(uuid, function () {
       return {
         claims: claims,
@@ -194,10 +188,8 @@ function handleAuthenticationResponse(req) {
     return {
       redirect: "https://minside.njff.no/account/findrelation?id=".concat(uuid, "&redirect=").concat(encodeURIComponent(returnUrl))
     };
-  }
+  } // User exists, we need to validate the account in dynamics.
 
-  log.info('User found, continuing login');
-  log.info(JSON.stringify(user, null, 4)); // User exists, we need to validate the account in dynamics.
 
   return completeLogin({
     claims: claims,
@@ -237,18 +229,16 @@ function completeLogin(_ref2) {
   } // Ensure the user is not subscribed to groups it should not be subscribed to.
 
 
-  log.info('Getting memberships for user.key: ' + user.key);
-  var currentGroups = authLib.getMemberships(user.key);
-  log.info('Cyrrent groups');
-  log.info(JSON.stringify(currentGroups, null, 4));
-  var groupsAreSetCorrect = accessMap.reduce(function (memo, _ref3) {
-    var internalID = _ref3.internalID;
+  var currentGroupKeys = authLib.getMemberships(user.key).map(function (_ref3) {
+    var key = _ref3.key;
+    return key;
+  });
+  var groupsAreSetCorrect = accessMap.reduce(function (memo, _ref4) {
+    var internalID = _ref4.internalID;
     var key = "group:".concat(portalLib.getIdProviderKey(), ":").concat(internalID);
-    log.info('Testing key:');
-    log.info(key);
 
     if (memo) {
-      return currentGroups.some(function (groupKey) {
+      return currentGroupKeys.some(function (groupKey) {
         return groupKey === key;
       });
     }
@@ -258,18 +248,17 @@ function completeLogin(_ref2) {
 
   if (!groupsAreSetCorrect) {
     log.info('Groups were not set correct. Resetting.');
-    var groups = currentGroups.filter(function (groupKey) {
+    var groups = currentGroupKeys.filter(function (groupKey) {
       return /^group/i.test(groupKey);
     });
     contextLib.runAsSu(function () {
-      if (groups.length) {
-        authLib.removeMembers(user.key, groups);
-      }
-
+      groups.forEach(function (groupKey) {
+        authLib.removeMembers(groupKey, [user.key]);
+      });
       var addGroups = (0, _login.getDefaultGroups)(isValidAdmin, accessMap);
-      log.info('Login');
-      log.info(JSON.stringify(addGroups, null, 4));
-      authLib.addMembers(user.key, addGroups);
+      addGroups.forEach(function (groupKey) {
+        authLib.addMembers(groupKey, [user.key]);
+      });
     });
   } // Todo: Store the original url the user tried to access when a normal user is logging in.
   // 1. If user does not have publishing rights, redirect to sites front page.

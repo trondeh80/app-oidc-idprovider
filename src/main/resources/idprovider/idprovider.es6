@@ -91,9 +91,6 @@ function userVerified({ params }) {
 
 // GET function exported / entry point for user:
 function handleAuthenticationResponse(req) {
-    log.info('incoming request');
-    log.info(JSON.stringify(req, null, 4));
-
     const { params: { action } } = req;
     if (action === ACTIONS.AFTER_VERIFY) {
         return userVerified(req);
@@ -132,9 +129,6 @@ function handleAuthenticationResponse(req) {
         userinfo: idToken.claims
     };
 
-    log.info('Resulting claims');
-    log.info(JSON.stringify(claims, null, 4));
-
     if (idProviderConfig.userinfoUrl) {
         const userinfoClaims = oidcLib.requestOAuth2({
             url: idProviderConfig.userinfoUrl,
@@ -163,9 +157,6 @@ function handleAuthenticationResponse(req) {
     const user = loginLib.findUserBySub(uuid);
 
     if (!user) {
-        log.info('No user found.');
-        log.info('Storing userdata in cache: ' + uuid);
-
         // no user found here. Lets validate :)
         cache.get(uuid, () => ({
             claims,
@@ -182,8 +173,6 @@ function handleAuthenticationResponse(req) {
             redirect: `https://minside.njff.no/account/findrelation?id=${uuid}&redirect=${encodeURIComponent(returnUrl)}`
         };
     }
-    log.info('User found, continuing login');
-    log.info(JSON.stringify(user, null, 4));
 
     // User exists, we need to validate the account in dynamics.
     return completeLogin({ claims, idToken, context, user });
@@ -215,32 +204,28 @@ function completeLogin({
     }
 
     // Ensure the user is not subscribed to groups it should not be subscribed to.
-    log.info('Getting memberships for user.key: ' + user.key);
-    const currentGroups = authLib.getMemberships(user.key);
-    log.info('Cyrrent groups');
-    log.info(JSON.stringify(currentGroups, null, 4));
+    const currentGroupKeys = authLib.getMemberships(user.key).map(({ key }) => key);
 
     const groupsAreSetCorrect = accessMap.reduce((memo, { internalID }) => {
         const key = `group:${portalLib.getIdProviderKey()}:${internalID}`;
-        log.info('Testing key:');
-        log.info(key);
         if (memo) {
-            return currentGroups.some((groupKey) => groupKey === key);
+            return currentGroupKeys.some((groupKey) => groupKey === key);
         }
         return memo;
     }, true);
 
     if (!groupsAreSetCorrect) {
         log.info('Groups were not set correct. Resetting.');
-        const groups = currentGroups.filter((groupKey) => /^group/i.test(groupKey));
+        const groups = currentGroupKeys.filter((groupKey) => /^group/i.test(groupKey));
         contextLib.runAsSu(() => {
-            if (groups.length) {
-                authLib.removeMembers(user.key, groups);
-            }
+            groups.forEach((groupKey) => {
+                authLib.removeMembers(groupKey, [user.key]);
+            });
+
             const addGroups = getDefaultGroups(isValidAdmin, accessMap);
-            log.info('Login');
-            log.info(JSON.stringify(addGroups, null, 4));
-            authLib.addMembers(user.key, addGroups);
+            addGroups.forEach((groupKey) => {
+                authLib.addMembers(groupKey, [user.key]);
+            });
         })
     }
 
