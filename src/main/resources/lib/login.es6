@@ -1,3 +1,7 @@
+import { getDynamicsUser, getHasPublishForUnion } from './dynamics/get-dynamics-user';
+import { getDefaultUserGroup } from './member-config';
+import { run } from '/lib/xp/context';
+
 const authLib = require('/lib/xp/auth');
 const contextLib = require('/lib/context');
 const configLib = require('/lib/config');
@@ -5,30 +9,57 @@ const commonLib = require('/lib/xp/common');
 const portalLib = require('/lib/xp/portal');
 const preconditions = require('/lib/preconditions');
 
-const regExp = /\$\{([^\}]+)\}/g;
+// const regExp = /\$\{([^\}]+)\}/g;
 
+/*
 export function getUser({ userinfo }) {
     const principalKey = getPrincipalKey({ userinfo });
     return contextLib.runAsSu(() =>
         authLib.getPrincipal(principalKey));
 }
+*/
 
-export function getOidcUserId({ userinfo }) {
-    return userinfo?.sub ?? null;
+export function findUserBySub(uuid) {
+    return contextLib.runAsSu(() => {
+        const userKey = `user:${portalLib.getIdProviderKey()}:${uuid}`;
+        return authLib.getPrincipal(userKey);
+    });
 }
 
-function getUserName({ userinfo }) {
+export function getUserUuid({ userinfo }) {
     return commonLib.sanitize(preconditions.checkParameter(userinfo, 'sub'));
 }
 
+/*
 function getPrincipalKey({ userinfo }) {
     const idProviderKey = portalLib.getIdProviderKey();
-    return 'user:' + idProviderKey + ':' + getUserName({ userinfo });
+    return 'user:' + idProviderKey + ':' + getUserUuid({ userinfo });
 }
+*/
 
-export function createUser(claims, dynamicsId) {
+/***
+ * Method to create new users that are validated.
+ * Admin users will be mapped to their corresponding group and get added to those.
+ * Normal member users will be mapped to a hardocded member group.
+ * @param claims
+ * @param uuid
+ * @returns {{isValidAdmin: boolean, defaultGroups: *[], dynamicsUser: *, user: *}}
+ */
+export function createUser(claims, uuid) {
     const { userinfo } = claims;
-    // const oidcUserId = getOidcUserId(claims);
+    const dynamicsUser = getDynamicsUser(uuid);
+
+    if (!dynamicsUser) {
+        throw 'Not a user';
+    }
+
+    const {
+        titles,
+        member
+    } = dynamicsUser;
+
+    const accessMap = createAccessMap(uuid, titles);
+    const isValidAdmin = accessMap.length > 0;
 
     //Creates the users
     const idProviderConfig = configLib.getIdProviderConfig();
@@ -36,93 +67,145 @@ export function createUser(claims, dynamicsId) {
         preconditions.check(userinfo.email_verified === true, 'Email must be verified');
     }
 
+    /*
     const email = idProviderConfig.mappings.email.replace(regExp, (match, claimKey) => getClaim(claims, claimKey)) || null;
     const displayName = idProviderConfig.mappings.displayName.replace(regExp, (match, claimKey) => getClaim(claims, claimKey)) ||
         userinfo.preferred_username || userinfo.name || email || userinfo.sub;
+    */
 
-    const userName = getUserName({ userInfo });
+    const userName = getUserUuid({ userinfo });
+    const {
+        firstname,
+        lastname,
+        emailAddress
+    } = member;
 
     const user = contextLib.runAsSu(() => authLib.createUser({
         idProvider: portalLib.getIdProviderKey(),
         name: userName,
-        displayName: displayName,
-        email: email
+        displayName: firstname + ' ' + lastname,
+        email: emailAddress
     }));
     log.info('User [' + user.key + '] created');
 
-    // Todo: Save dynamicsId => userId in separate repository
+    const defaultGroups = getDefaultGroups(isValidAdmin, accessMap);
+    log.info('User groups to be created');
+    log.info(JSON.stringify(defaultGroups, null, 4));
 
-    const defaultGroups = idProviderConfig.defaultGroups;
     contextLib.runAsSu(() => {
-        toArray(defaultGroups).forEach(function (defaultGroup) {
+        defaultGroups.forEach((defaultGroup) => {
             authLib.addMembers(defaultGroup, [user.key]);
             log.debug('User [' + user.key + '] added to group [' + defaultGroup + ']');
         });
     });
 
-    return user;
+    return {
+        user,
+        isValidAdmin,
+        accessMap,
+        dynamicsUser
+    };
 }
 
-export function login(claims) {
-    // const user = getUser(claims);
-    const principalKey = getPrincipalKey(claims);
-    const userinfoClaims = claims.userinfo;
+/***
+ * Returns the groups this specific user should belong to.
+ * @param isValidAdmin - has the user publishing rights in any of the orgs?
+ * @param accessMap - Map over orgID and publishing rights.
+ * @returns {*[]}
+ */
+export function getDefaultGroups(isValidAdmin, accessMap) {
+    const { defaultGroups } = configLib.getIdProviderConfig();
+    let groups = isValidAdmin ? [].concat(defaultGroups) : [getDefaultUserGroup()];
+    if (!isValidAdmin) {
+        return groups;
+    }
+    return groups.concat(findUserGroups(accessMap));
+}
 
+/**
+ * Fetches publishing access for each element in the titles array received from dynamics
+ * @param uuid
+ * @param titles - list of organizations the user is related to
+ * @returns {{internalID: *, hasPublish: boolean}[]}
+ */
+export function createAccessMap(uuid, titles = []) {
+    return titles
+        .map(({ union: { number = null, internalID } }) => {
+            const hasPublish = getHasPublishForUnion(uuid, number);
+            return {
+                internalID,
+                hasPublish
+            };
+        })
+        .filter(({ hasPublish }) => hasPublish);
+}
+
+/***
+ * Map dynamics internalID of orgs to groupdIds present in our system
+ * @param memberShips
+ * @returns {*[]}
+ */
+function findUserGroups(memberShips) {
+    const providerKey = portalLib.getIdProviderKey();
+    return []
+        .concat(memberShips)
+        .map(({ internalID }) =>
+            authLib.getPrincipal(`group:${providerKey}:${internalID}`))
+        .filter((group) => !!group);
+}
+
+export function login(claims, user) {
+    const userinfoClaims = claims.userinfo;
     log.info('User info received:');
     log.info(JSON.stringify(userinfoClaims, null, 4));
 
-    // If the user does not exist
-    // if (!user) {
-    //     createUser(claims)
-    // }
-
-    // Todo: Verify that the user belongs to the publishing groups in dynamics. If not, deny login.
-
-
     //  Updates the profile
     const profile = contextLib.runAsSu(() => authLib.modifyProfile({
-        key: principalKey,
+        key: user.key,// getPrincipalKey(claims),
         scope: 'oidc',
         editor: () => claims
     }));
-    log.debug('Modified profile of [' + principalKey + ']: ' + JSON.stringify(profile));
+    log.info('Modified profile of [' + user.key + ']: ' + JSON.stringify(profile));
 
     // Logs in the user
     const loginResult = authLib.login({
-        user: getUserName(claims),
+        user: user.login,
         idProvider: portalLib.getIdProviderKey(),
         skipAuth: true
     });
 
+    log.info('Login result');
+    log.info(JSON.stringify(loginResult, null, 4));
+
     if (loginResult.authenticated) {
-        log.debug('Logged in user [' + principalKey + ']');
+        log.debug('Logged in user [' + user.key + ']');
     } else {
-        throw 'Error while logging user [' + principalKey + ']';
+        throw 'Error while logging user [' + user.key + ']';
     }
 }
 
-function toArray(object) {
-    if (!object) {
-        return [];
-    }
-    if (object.constructor === Array) {
-        return object;
-    }
-    return [object];
-}
-
-function getClaim(claims, claimKey) {
-    const claimKeys = claimKey.split('.');
-
-    let currentClaimObject = claims;
-    let claim;
-    for (const claimKey of claimKeys) {
-        currentClaimObject = currentClaimObject[claimKey];
-        if (currentClaimObject == null) {
-            log.warning('Claim [' + claimKey + '] missing');
-            return '';
-        }
-        claim = currentClaimObject;
-    }
-    return claim || '';
-}
+// function toArray(object) {
+//     if (!object) {
+//         return [];
+//     }
+//     if (object.constructor === Array) {
+//         return object;
+//     }
+//     return [object];
+// }
+//
+// function getClaim(claims, claimKey) {
+//     const claimKeys = claimKey.split('.');
+//
+//     let currentClaimObject = claims;
+//     let claim;
+//     for (const claimKey of claimKeys) {
+//         currentClaimObject = currentClaimObject[claimKey];
+//         if (currentClaimObject == null) {
+//             log.warning('Claim [' + claimKey + '] missing');
+//             return '';
+//         }
+//         claim = currentClaimObject;
+//     }
+//     return claim || '';
+// }

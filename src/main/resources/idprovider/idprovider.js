@@ -2,13 +2,15 @@
 
 var _cache = _interopRequireDefault(require("../lib/login-util/cache"));
 
-var _getToken = require("../lib/dynamics/get-token");
-
 var _login = require("../lib/login");
+
+var _getDynamicsUser = require("../lib/dynamics/get-dynamics-user");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
 var configLib = require('/lib/config');
+
+var contextLib = require('/lib/context');
 
 var oidcLib = require('/lib/oidc');
 
@@ -23,7 +25,7 @@ var authLib = require('/lib/xp/auth');
 var portalLib = require('/lib/xp/portal');
 
 var ACTIONS = {
-  AFTER_VERIFY: 1
+  AFTER_VERIFY: '1'
 };
 
 function redirectToAuthorizationEndpoint() {
@@ -71,8 +73,9 @@ function generateRedirectUri() {
 
 function userVerified(_ref) {
   var params = _ref.params;
-  var uuid = params.uuid,
-      dynamicsId = params.dynamicsId; // Todo: Find out how the dynamics ID is returned!!
+  log.info('User verified request received');
+  log.info(JSON.stringify(params, null, 4));
+  var uuid = params.uuid; // Todo: Find out how the dynamics ID is returned!!
 
   var userData = _cache["default"].get(uuid, function () {
     return null;
@@ -85,11 +88,21 @@ function userVerified(_ref) {
   var claims = userData.claims,
       idToken = userData.idToken,
       context = userData.context;
-  (0, _login.createUser)(claims, dynamicsId);
+
+  var _createUser = (0, _login.createUser)(claims, uuid),
+      user = _createUser.user,
+      dynamicsUser = _createUser.dynamicsUser,
+      accessMap = _createUser.accessMap,
+      isValidAdmin = _createUser.isValidAdmin;
+
   completeLogin({
     claims: claims,
     idToken: idToken,
-    context: context
+    context: context,
+    user: user,
+    dynamicsUser: dynamicsUser,
+    accessMap: accessMap,
+    isValidAdmin: isValidAdmin
   });
 } // GET function exported / entry point for user:
 
@@ -158,14 +171,13 @@ function handleAuthenticationResponse(req) {
     log.debug('OAuth2 endpoint [' + additionalEndpoint.name + '] claims: ' + JSON.stringify(additionalClaims));
     claims[additionalEndpoint.name] = oidcLib.mergeClaims(claims[additionalEndpoint.name] || {}, additionalClaims);
   });
-  log.debug('All claims: ' + JSON.stringify(claims)); // If user gets here, we need to intercept the call and redirect user.
-  // if (userExists(claims)) -- continue
-  // else -- Save claims in cache for 10 minutes and redirect user to validationpage.
-  // endif;
+  log.debug('All claims: ' + JSON.stringify(claims));
+  var uuid = loginLib.getUserUuid(claims);
+  var user = loginLib.findUserBySub(uuid);
 
-  if (!loginLib.getUser(claims)) {
-    // no user found here. Lets validate :)
-    var uuid = loginLib.getOidcUserId(claims);
+  if (!user) {
+    log.info('No user found.');
+    log.info('Storing userdata in cache: ' + uuid); // no user found here. Lets validate :)
 
     _cache["default"].get(uuid, function () {
       return {
@@ -180,51 +192,106 @@ function handleAuthenticationResponse(req) {
       action: ACTIONS.AFTER_VERIFY
     });
     return {
-      redirect: "https://minside.njff.no/account/findrelation?id=".concat(uuid, "&phone=47466546&redirect=").concat(returnUrl)
+      redirect: "https://minside.njff.no/account/findrelation?id=".concat(uuid, "&redirect=").concat(encodeURIComponent(returnUrl))
     };
-  } // User exists, we need to validate the account in dynamics.
+  }
 
+  log.info('User found, continuing login');
+  log.info(JSON.stringify(user, null, 4)); // User exists, we need to validate the account in dynamics.
 
   return completeLogin({
     claims: claims,
     idToken: idToken,
-    context: context
+    context: context,
+    user: user
   });
 }
 
 function completeLogin(_ref2) {
+  var _dynamicsUser, _accessMap, _isValidAdmin;
+
   var claims = _ref2.claims,
       idToken = _ref2.idToken,
-      context = _ref2.context;
+      context = _ref2.context,
+      user = _ref2.user,
+      _ref2$dynamicsUser = _ref2.dynamicsUser,
+      dynamicsUser = _ref2$dynamicsUser === void 0 ? null : _ref2$dynamicsUser,
+      _ref2$accessMap = _ref2.accessMap,
+      accessMap = _ref2$accessMap === void 0 ? null : _ref2$accessMap,
+      _ref2$isValidAdmin = _ref2.isValidAdmin,
+      isValidAdmin = _ref2$isValidAdmin === void 0 ? null : _ref2$isValidAdmin;
+  var uuid = loginLib.getUserUuid(claims);
+  dynamicsUser = (_dynamicsUser = dynamicsUser) !== null && _dynamicsUser !== void 0 ? _dynamicsUser : (0, _getDynamicsUser.getDynamicsUser)(uuid);
+
+  if (!dynamicsUser) {
+    throw 'Not a valid user';
+  }
+
+  accessMap = (_accessMap = accessMap) !== null && _accessMap !== void 0 ? _accessMap : (0, _login.createAccessMap)(uuid, dynamicsUser.titles);
+  isValidAdmin = (_isValidAdmin = isValidAdmin) !== null && _isValidAdmin !== void 0 ? _isValidAdmin : accessMap.length > 0;
   var idProviderConfig = configLib.getIdProviderConfig();
-  loginLib.login(claims);
+  loginLib.login(claims, user);
 
   if (idProviderConfig.endSession && idProviderConfig.endSession.idTokenHintKey) {
     requestLib.storeIdToken(idToken.idToken);
-  }
+  } // Ensure the user is not subscribed to groups it should not be subscribed to.
+
+
+  log.info('Getting memberships for user.key: ' + user.key);
+  var currentGroups = authLib.getMemberships(user.key);
+  log.info('Cyrrent groups');
+  log.info(JSON.stringify(currentGroups, null, 4));
+  var groupsAreSetCorrect = accessMap.reduce(function (memo, _ref3) {
+    var internalID = _ref3.internalID;
+    var key = "group:".concat(portalLib.getIdProviderKey(), ":").concat(internalID);
+    log.info('Testing key:');
+    log.info(key);
+
+    if (memo) {
+      return currentGroups.some(function (groupKey) {
+        return groupKey === key;
+      });
+    }
+
+    return memo;
+  }, true);
+
+  if (!groupsAreSetCorrect) {
+    log.info('Groups were not set correct. Resetting.');
+    var groups = currentGroups.filter(function (groupKey) {
+      return /^group/i.test(groupKey);
+    });
+    contextLib.runAsSu(function () {
+      if (groups.length) {
+        authLib.removeMembers(user.key, groups);
+      }
+
+      var addGroups = (0, _login.getDefaultGroups)(isValidAdmin, accessMap);
+      log.info('Login');
+      log.info(JSON.stringify(addGroups, null, 4));
+      authLib.addMembers(user.key, addGroups);
+    });
+  } // Todo: Store the original url the user tried to access when a normal user is logging in.
+  // 1. If user does not have publishing rights, redirect to sites front page.
+  // 2. If user has publishing rights, forward to "context.originalUrl"
+
 
   return {
-    redirect: context.originalUrl
+    redirect: isValidAdmin ? context.originalUrl : '/'
   };
-}
+} //
+// function handleIncomingVerifiedUser({ params: { oidcId, dynamicsId } }) {
+//     const userData = cache.get(oidcId, () => null); // fetch our temporary stored data from cache.
+//     if (!userData) {
+//         throw 'Session expired. User must start process from start';
+//     }
+//
+//     const { claims, idToken } = userData;
+//
+//     // Use dynamicsId to fetch user and its groups/rights
+//
+// }
 
-function handleIncomingVerifiedUser(_ref3) {
-  var _ref3$params = _ref3.params,
-      oidcId = _ref3$params.oidcId,
-      dynamicsId = _ref3$params.dynamicsId;
-
-  var userData = _cache["default"].get(oidcId, function () {
-    return null;
-  }); // fetch our temporary stored data from cache.
-
-
-  if (!userData) {
-    throw 'Session expired. User must start process from start';
-  }
-
-  var claims = userData.claims,
-      idToken = userData.idToken; // Use dynamicsId to fetch user and its groups/rights
-}
 
 function getRequestParams(req) {
   var params = req.params;

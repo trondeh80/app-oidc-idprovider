@@ -3,8 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.getDynamicsUser = getDynamicsUser;
-exports.getHasPublishForUnion = getHasPublishForUnion;
+exports["default"] = dynamicsApi;
 
 var _httpClient = require("/lib/http-client");
 
@@ -18,44 +17,21 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
-var NO_MEMBER_RESPONSE = 'Medlem ikke funnet';
-
-function getDynamicsUser(uuid) {
+function dynamicsApi(uuid) {
   var _JSON$parse;
 
-  var url = createUrl("/accounts/".concat(uuid, "?fullMemberDetail=true&memberDetail=true&membership=true&validMembership=true&title=true")); // eslint-disable-line
+  var url = createUrl("/accounts/".concat(uuid, "?fullMemberDetail=true&memberDetail=true&membership=true&validMembership=true&validPublish=true")); // eslint-disable-line
 
   var dynamicsRequest = createDynamicsRequest(url);
 
   var _request = (0, _httpClient.request)(dynamicsRequest),
       body = _request.body;
 
-  if (!body || body === NO_MEMBER_RESPONSE) {
-    return null;
-  }
-
   var _ref = (_JSON$parse = JSON.parse(body)) !== null && _JSON$parse !== void 0 ? _JSON$parse : {},
       _ref$response = _ref.response,
       response = _ref$response === void 0 ? null : _ref$response;
 
   return response;
-}
-
-function getHasPublishForUnion(uuid, number) {
-  var _JSON$parse2;
-
-  var url = createUrl("/accounts/".concat(uuid, "?union=").concat(number, "&validPublish=true")); // eslint-disable-line
-
-  var dynamicsRequest = createDynamicsRequest(url);
-
-  var _request2 = (0, _httpClient.request)(dynamicsRequest),
-      body = _request2.body;
-
-  var _ref2 = (_JSON$parse2 = JSON.parse(body)) !== null && _JSON$parse2 !== void 0 ? _JSON$parse2 : {},
-      _ref2$response$hasPub = _ref2.response.hasPublish,
-      hasPublish = _ref2$response$hasPub === void 0 ? false : _ref2$response$hasPub;
-
-  return hasPublish;
 }
 
 function createDynamicsRequest(url) {

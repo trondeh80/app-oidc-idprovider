@@ -1,8 +1,9 @@
 import cache from '../lib/login-util/cache';
-import { fetchAccessToken } from "../lib/dynamics/get-token";
-import { createUser } from "../lib/login";
+import { createAccessMap, createUser, getDefaultGroups } from "../lib/login";
+import { getDynamicsUser } from "../lib/dynamics/get-dynamics-user";
 
 const configLib = require('/lib/config');
+const contextLib = require('/lib/context');
 const oidcLib = require('/lib/oidc');
 const loginLib = require('/lib/login');
 const requestLib = require('/lib/request');
@@ -11,7 +12,7 @@ const authLib = require('/lib/xp/auth');
 const portalLib = require('/lib/xp/portal');
 
 const ACTIONS = {
-    AFTER_VERIFY: 1
+    AFTER_VERIFY: '1'
 }
 
 function redirectToAuthorizationEndpoint() {
@@ -60,7 +61,9 @@ function generateRedirectUri(params = {}) {
  * @param params
  */
 function userVerified({ params }) {
-    const { uuid, dynamicsId } = params; // Todo: Find out how the dynamics ID is returned!!
+    log.info('User verified request received');
+    log.info(JSON.stringify(params, null, 4));
+    const { uuid } = params; // Todo: Find out how the dynamics ID is returned!!
 
     const userData = cache.get(uuid, () => null);
     if (!userData) {
@@ -73,8 +76,16 @@ function userVerified({ params }) {
         context
     } = userData;
 
-    createUser(claims, dynamicsId);
-    completeLogin({ claims, idToken, context });
+    const { user, dynamicsUser, accessMap, isValidAdmin } = createUser(claims, uuid);
+    completeLogin({
+        claims,
+        idToken,
+        context,
+        user,
+        dynamicsUser,
+        accessMap,
+        isValidAdmin
+    });
 }
 
 
@@ -148,13 +159,14 @@ function handleAuthenticationResponse(req) {
     });
     log.debug('All claims: ' + JSON.stringify(claims));
 
-    // If user gets here, we need to intercept the call and redirect user.
-    // if (userExists(claims)) -- continue
-    // else -- Save claims in cache for 10 minutes and redirect user to validationpage.
-    // endif;
-    if (!loginLib.getUser(claims)) {
+    const uuid = loginLib.getUserUuid(claims);
+    const user = loginLib.findUserBySub(uuid);
+
+    if (!user) {
+        log.info('No user found.');
+        log.info('Storing userdata in cache: ' + uuid);
+
         // no user found here. Lets validate :)
-        const uuid = loginLib.getOidcUserId(claims);
         cache.get(uuid, () => ({
             claims,
             idToken,
@@ -167,38 +179,91 @@ function handleAuthenticationResponse(req) {
         });
 
         return {
-            redirect: `https://minside.njff.no/account/findrelation?id=${uuid}&phone=47466546&redirect=${returnUrl}`
+            redirect: `https://minside.njff.no/account/findrelation?id=${uuid}&redirect=${encodeURIComponent(returnUrl)}`
         };
     }
-    // User exists, we need to validate the account in dynamics.
+    log.info('User found, continuing login');
+    log.info(JSON.stringify(user, null, 4));
 
-    return completeLogin({ claims, idToken, context });
+    // User exists, we need to validate the account in dynamics.
+    return completeLogin({ claims, idToken, context, user });
 }
 
-function completeLogin({ claims, idToken, context }) {
+function completeLogin({
+                           claims,
+                           idToken,
+                           context,
+                           user,
+                           dynamicsUser = null,
+                           accessMap = null,
+                           isValidAdmin = null
+                       }) {
+    const uuid = loginLib.getUserUuid(claims);
+    dynamicsUser = dynamicsUser ?? getDynamicsUser(uuid);
+    if (!dynamicsUser) {
+        throw 'Not a valid user';
+    }
+
+    accessMap = accessMap ?? createAccessMap(uuid, dynamicsUser.titles);
+    isValidAdmin = isValidAdmin ?? accessMap.length > 0;
+
     const idProviderConfig = configLib.getIdProviderConfig();
-    loginLib.login(claims);
+    loginLib.login(claims, user);
 
     if (idProviderConfig.endSession && idProviderConfig.endSession.idTokenHintKey) {
         requestLib.storeIdToken(idToken.idToken);
     }
 
+    // Ensure the user is not subscribed to groups it should not be subscribed to.
+    log.info('Getting memberships for user.key: ' + user.key);
+    const currentGroups = authLib.getMemberships(user.key);
+    log.info('Cyrrent groups');
+    log.info(JSON.stringify(currentGroups, null, 4));
+
+    const groupsAreSetCorrect = accessMap.reduce((memo, { internalID }) => {
+        const key = `group:${portalLib.getIdProviderKey()}:${internalID}`;
+        log.info('Testing key:');
+        log.info(key);
+        if (memo) {
+            return currentGroups.some((groupKey) => groupKey === key);
+        }
+        return memo;
+    }, true);
+
+    if (!groupsAreSetCorrect) {
+        log.info('Groups were not set correct. Resetting.');
+        const groups = currentGroups.filter((groupKey) => /^group/i.test(groupKey));
+        contextLib.runAsSu(() => {
+            if (groups.length) {
+                authLib.removeMembers(user.key, groups);
+            }
+            const addGroups = getDefaultGroups(isValidAdmin, accessMap);
+            log.info('Login');
+            log.info(JSON.stringify(addGroups, null, 4));
+            authLib.addMembers(user.key, addGroups);
+        })
+    }
+
+    // Todo: Store the original url the user tried to access when a normal user is logging in.
+    // 1. If user does not have publishing rights, redirect to sites front page.
+    // 2. If user has publishing rights, forward to "context.originalUrl"
     return {
-        redirect: context.originalUrl
+        redirect: isValidAdmin ? context.originalUrl : '/'
     };
 }
 
-function handleIncomingVerifiedUser({ params: { oidcId, dynamicsId } }) {
-    const userData = cache.get(oidcId, () => null); // fetch our temporary stored data from cache.
-    if (!userData) {
-        throw 'Session expired. User must start process from start';
-    }
-
-    const { claims, idToken } = userData;
-
-    // Use dynamicsId to fetch user and its groups/rights
-
-}
+//
+// function handleIncomingVerifiedUser({ params: { oidcId, dynamicsId } }) {
+//     const userData = cache.get(oidcId, () => null); // fetch our temporary stored data from cache.
+//     if (!userData) {
+//         throw 'Session expired. User must start process from start';
+//     }
+//
+//     const { claims, idToken } = userData;
+//
+//     // Use dynamicsId to fetch user and its groups/rights
+//
+// }
 
 function getRequestParams(req) {
     const params = req.params;

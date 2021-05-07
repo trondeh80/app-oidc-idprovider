@@ -9,7 +9,7 @@ var _cache = require("/lib/cache");
 
 var cache = (0, _cache.newCache)({
   size: 100,
-  expire: 60 * 10 // 10 minutes
+  expire: 60 * 55 // 50 minutes (10 minutes less than dynamics token lifetime.)
 
 });
 var _default = cache;
