@@ -211,9 +211,8 @@ function completeLogin({
         log.info('Groups were not set correct for openid: ' + uuid + '. Resetting.');
         const groups = currentGroupKeys.filter((groupKey) => /^group/i.test(groupKey));
         contextLib.runAsSu(() => {
-            groups.forEach((groupKey) => {
-                authLib.removeMembers(groupKey, [user.key]);
-            });
+            groups.forEach((groupKey) =>
+                authLib.removeMembers(groupKey, [user.key]));
 
             defaultGroups.forEach((groupKey) =>
                 authLib.addMembers(groupKey, [user.key]));
@@ -235,7 +234,8 @@ function isUserGroupsCorrect(accessMap, currentGroupKeys, defaultGroups) {
         .concat(defaultGroups);
 
     return accessGroups.every((key) =>
-        currentGroupKeys.some((groupKey) => groupKey === key));
+                currentGroupKeys.some((groupKey) =>
+                    groupKey === key));
 }
 
 function getRequestParams(req) {
