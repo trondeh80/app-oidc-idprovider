@@ -204,15 +204,9 @@ function completeLogin({
     }
 
     // Ensure the user is not subscribed to groups it should not be subscribed to.
+    const defaultGroups = getDefaultGroups(isValidAdmin, accessMap);
     const currentGroupKeys = authLib.getMemberships(user.key).map(({ key }) => key);
-
-    const groupsAreSetCorrect = accessMap.reduce((memo, { internalID }) => {
-        const key = `group:${portalLib.getIdProviderKey()}:${internalID}`;
-        if (memo) {
-            return currentGroupKeys.some((groupKey) => groupKey === key);
-        }
-        return memo;
-    }, true);
+    const groupsAreSetCorrect = isUserGroupsCorrect(accessMap, currentGroupKeys, defaultGroups)
 
     if (!groupsAreSetCorrect) {
         log.info('Groups were not set correct for openid: ' + uuid + '. Resetting.');
@@ -222,10 +216,8 @@ function completeLogin({
                 authLib.removeMembers(groupKey, [user.key]);
             });
 
-            const addGroups = getDefaultGroups(isValidAdmin, accessMap);
-            addGroups.forEach((groupKey) => {
-                authLib.addMembers(groupKey, [user.key]);
-            });
+            defaultGroups.forEach((groupKey) =>
+                authLib.addMembers(groupKey, [user.key]));
         })
     }
 
@@ -235,6 +227,18 @@ function completeLogin({
     return {
         redirect: isValidAdmin ? context.originalUrl : '/'
     };
+}
+
+function isUserGroupsCorrect(accessMap, currentGroupKeys, defaultGroups) {
+    const accessGroups = accessMap
+        .map(({ internalID }) =>
+            `group:${portalLib.getIdProviderKey()}:${internalID}`)
+        .concat(defaultGroups);
+
+    const hasCorrectGroups = accessGroups.every((key) =>
+        currentGroupKeys.some((groupKey) => groupKey === key));
+
+    return hasCorrectGroups;
 }
 
 function getRequestParams(req) {
