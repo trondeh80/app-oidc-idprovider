@@ -172,7 +172,7 @@ function findUserGroups(memberShips) {
 
 function login(claims, user) {
   //  Updates the profile
-  var profile = contextLib.runAsSu(function () {
+  contextLib.runAsSu(function () {
     return authLib.modifyProfile({
       key: user.key,
       scope: 'oidc',

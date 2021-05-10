@@ -12,7 +12,7 @@ var _config = require("../login-util/config");
 /**
  *  Returns a dynamics access token to be used in communication with the new dynamics API:
  *  https://servicetestv2.njff.no/swagger/ui/index#!
- *  If token was generated less than 5 minutes ago. Reuse it, else create new and update object.
+ *  If token was generated less than 55 minutes ago. Reuse it, else create new and update object.
  *  @returns a string containing the access token, or undefined if request fails.
  */
 var token = {

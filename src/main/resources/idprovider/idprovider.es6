@@ -1,6 +1,6 @@
 import cache from '../lib/login-util/cache';
-import { createAccessMap, createUser, getDefaultGroups } from "../lib/login";
-import { getDynamicsUser } from "../lib/dynamics/get-dynamics-user";
+import { createAccessMap, createUser, getDefaultGroups } from '../lib/login';
+import { getDynamicsUser } from '../lib/dynamics/get-dynamics-user';
 
 const configLib = require('/lib/config');
 const contextLib = require('/lib/context');
@@ -61,9 +61,7 @@ function generateRedirectUri(params = {}) {
  * @param params
  */
 function userVerified({ params }) {
-    log.info('User verified request received');
-    log.info(JSON.stringify(params, null, 4));
-    const { uuid } = params; // Todo: Find out how the dynamics ID is returned!!
+    const { uuid } = params;
 
     const userData = cache.get(uuid, () => null);
     if (!userData) {
@@ -96,23 +94,22 @@ function handleAuthenticationResponse(req) {
         return userVerified(req);
     }
 
-    const params = getRequestParams(req);
-    const context = requestLib.removeContext(params.state);
+    const { state, error, code, error_description } = getRequestParams(req);
+    const context = requestLib.removeContext(state);
 
     if (!context) {
         throw 'no context';
     }
 
-    if (context.state !== params.state) {
-        throw 'Invalid state parameter: ' + params.state;
+    if (context.state !== state) {
+        throw 'Invalid state parameter: ' + state;
     }
 
-    if (params.error) {
-        throw 'Authentication error [' + params.error + ']' + (params.error_description ? ': ' + params.error_description : '');
+    if (error) {
+        throw 'Authentication error [' + error + ']' + (error_description ? ': ' + error_description : '');
     }
 
     const idProviderConfig = configLib.getIdProviderConfig();
-    const code = params.code;
 
     //https://tools.ietf.org/html/rfc6749#section-2.3.1
     const idToken = oidcLib.requestIDToken({
@@ -122,7 +119,7 @@ function handleAuthenticationResponse(req) {
         clientSecret: idProviderConfig.clientSecret,
         redirectUri: context.redirectUri,
         nonce: context.nonce,
-        code: code,
+        code,
     });
 
     const claims = {
@@ -143,7 +140,7 @@ function handleAuthenticationResponse(req) {
         claims.userinfo = oidcLib.mergeClaims(claims.userinfo, userinfoClaims);
     }
 
-    toArray(idProviderConfig.additionalEndpoints).forEach(additionalEndpoint => {
+    toArray(idProviderConfig.additionalEndpoints).forEach((additionalEndpoint) => {
         const additionalClaims = oidcLib.requestOAuth2({
             url: additionalEndpoint.url,
             accessToken: idToken.accessToken
@@ -157,7 +154,9 @@ function handleAuthenticationResponse(req) {
     const user = loginLib.findUserBySub(uuid);
 
     if (!user) {
-        // no user found in database. Validate before creating the user
+        // No user found in database.
+        // We need to redirect the user to columbus validation page
+        // Before we redirect we cache the authentication data received from our openID integration
         cache.get(uuid, () => ({
             claims,
             idToken,
@@ -174,7 +173,7 @@ function handleAuthenticationResponse(req) {
         };
     }
 
-    // User exists, we need to validate the account in dynamics.
+    // User exists, we need to validate the account using the dybamics API.
     return completeLogin({ claims, idToken, context, user });
 }
 
@@ -189,7 +188,7 @@ function completeLogin({
                        }) {
     const uuid = loginLib.getUserUuid(claims);
     dynamicsUser = dynamicsUser ?? getDynamicsUser(uuid);
-    if (!dynamicsUser) {
+    if (!dynamicsUser) { // Invalid users are filtered out here.
         throw 'Not a valid user';
     }
 
@@ -206,7 +205,7 @@ function completeLogin({
     // Ensure the user is not subscribed to groups it should not be subscribed to.
     const defaultGroups = getDefaultGroups(isValidAdmin, accessMap);
     const currentGroupKeys = authLib.getMemberships(user.key).map(({ key }) => key);
-    const groupsAreSetCorrect = isUserGroupsCorrect(accessMap, currentGroupKeys, defaultGroups)
+    const groupsAreSetCorrect = isUserGroupsCorrect(accessMap, currentGroupKeys, defaultGroups);
 
     if (!groupsAreSetCorrect) {
         log.info('Groups were not set correct for openid: ' + uuid + '. Resetting.');
@@ -235,10 +234,8 @@ function isUserGroupsCorrect(accessMap, currentGroupKeys, defaultGroups) {
             `group:${portalLib.getIdProviderKey()}:${internalID}`)
         .concat(defaultGroups);
 
-    const hasCorrectGroups = accessGroups.every((key) =>
+    return accessGroups.every((key) =>
         currentGroupKeys.some((groupKey) => groupKey === key));
-
-    return hasCorrectGroups;
 }
 
 function getRequestParams(req) {

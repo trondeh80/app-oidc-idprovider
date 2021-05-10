@@ -141,7 +141,7 @@ function findUserGroups(memberShips) {
 
 export function login(claims, user) {
     //  Updates the profile
-    const profile = contextLib.runAsSu(() => authLib.modifyProfile({
+    contextLib.runAsSu(() => authLib.modifyProfile({
         key: user.key,
         scope: 'oidc',
         editor: () => claims

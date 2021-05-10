@@ -28,9 +28,11 @@ function getDynamicsUser(uuid) {
   var dynamicsRequest = createDynamicsRequest(url);
 
   var _request = (0, _httpClient.request)(dynamicsRequest),
-      body = _request.body;
+      body = _request.body,
+      status = _request.status;
 
-  if (!body || body === NO_MEMBER_RESPONSE) {
+  if (status !== 200 || body === NO_MEMBER_RESPONSE) {
+    // Adding the string comparison because of unstable API
     return null;
   }
 

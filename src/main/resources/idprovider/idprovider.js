@@ -73,9 +73,7 @@ function generateRedirectUri() {
 
 function userVerified(_ref) {
   var params = _ref.params;
-  log.info('User verified request received');
-  log.info(JSON.stringify(params, null, 4));
-  var uuid = params.uuid; // Todo: Find out how the dynamics ID is returned!!
+  var uuid = params.uuid;
 
   var userData = _cache["default"].get(uuid, function () {
     return null;
@@ -114,23 +112,27 @@ function handleAuthenticationResponse(req) {
     return userVerified(req);
   }
 
-  var params = getRequestParams(req);
-  var context = requestLib.removeContext(params.state);
+  var _getRequestParams = getRequestParams(req),
+      state = _getRequestParams.state,
+      error = _getRequestParams.error,
+      code = _getRequestParams.code,
+      error_description = _getRequestParams.error_description;
+
+  var context = requestLib.removeContext(state);
 
   if (!context) {
     throw 'no context';
   }
 
-  if (context.state !== params.state) {
-    throw 'Invalid state parameter: ' + params.state;
+  if (context.state !== state) {
+    throw 'Invalid state parameter: ' + state;
   }
 
-  if (params.error) {
-    throw 'Authentication error [' + params.error + ']' + (params.error_description ? ': ' + params.error_description : '');
+  if (error) {
+    throw 'Authentication error [' + error + ']' + (error_description ? ': ' + error_description : '');
   }
 
-  var idProviderConfig = configLib.getIdProviderConfig();
-  var code = params.code; //https://tools.ietf.org/html/rfc6749#section-2.3.1
+  var idProviderConfig = configLib.getIdProviderConfig(); //https://tools.ietf.org/html/rfc6749#section-2.3.1
 
   var idToken = oidcLib.requestIDToken({
     issuer: idProviderConfig.issuer,
@@ -172,7 +174,9 @@ function handleAuthenticationResponse(req) {
   var user = loginLib.findUserBySub(uuid);
 
   if (!user) {
-    // no user found in database. Validate before creating the user
+    // No user found in database.
+    // We need to redirect the user to columbus validation page
+    // Before we redirect we cache the authentication data received from our openID integration
     _cache["default"].get(uuid, function () {
       return {
         claims: claims,
@@ -188,7 +192,7 @@ function handleAuthenticationResponse(req) {
     return {
       redirect: "https://minside.njff.no/account/findrelation?id=".concat(uuid, "&redirect=").concat(encodeURIComponent(returnUrl))
     };
-  } // User exists, we need to validate the account in dynamics.
+  } // User exists, we need to validate the account using the dybamics API.
 
 
   return completeLogin({
@@ -216,6 +220,7 @@ function completeLogin(_ref2) {
   dynamicsUser = (_dynamicsUser = dynamicsUser) !== null && _dynamicsUser !== void 0 ? _dynamicsUser : (0, _getDynamicsUser.getDynamicsUser)(uuid);
 
   if (!dynamicsUser) {
+    // Invalid users are filtered out here.
     throw 'Not a valid user';
   }
 
@@ -229,22 +234,12 @@ function completeLogin(_ref2) {
   } // Ensure the user is not subscribed to groups it should not be subscribed to.
 
 
+  var defaultGroups = (0, _login.getDefaultGroups)(isValidAdmin, accessMap);
   var currentGroupKeys = authLib.getMemberships(user.key).map(function (_ref3) {
     var key = _ref3.key;
     return key;
   });
-  var groupsAreSetCorrect = accessMap.reduce(function (memo, _ref4) {
-    var internalID = _ref4.internalID;
-    var key = "group:".concat(portalLib.getIdProviderKey(), ":").concat(internalID);
-
-    if (memo) {
-      return currentGroupKeys.some(function (groupKey) {
-        return groupKey === key;
-      });
-    }
-
-    return memo;
-  }, true);
+  var groupsAreSetCorrect = isUserGroupsCorrect(accessMap, currentGroupKeys, defaultGroups);
 
   if (!groupsAreSetCorrect) {
     log.info('Groups were not set correct for openid: ' + uuid + '. Resetting.');
@@ -255,9 +250,8 @@ function completeLogin(_ref2) {
       groups.forEach(function (groupKey) {
         authLib.removeMembers(groupKey, [user.key]);
       });
-      var addGroups = (0, _login.getDefaultGroups)(isValidAdmin, accessMap);
-      addGroups.forEach(function (groupKey) {
-        authLib.addMembers(groupKey, [user.key]);
+      defaultGroups.forEach(function (groupKey) {
+        return authLib.addMembers(groupKey, [user.key]);
       });
     });
   } // Todo: Store the original url the user tried to access when a normal user is logging in.
@@ -268,6 +262,18 @@ function completeLogin(_ref2) {
   return {
     redirect: isValidAdmin ? context.originalUrl : '/'
   };
+}
+
+function isUserGroupsCorrect(accessMap, currentGroupKeys, defaultGroups) {
+  var accessGroups = accessMap.map(function (_ref4) {
+    var internalID = _ref4.internalID;
+    return "group:".concat(portalLib.getIdProviderKey(), ":").concat(internalID);
+  }).concat(defaultGroups);
+  return accessGroups.every(function (key) {
+    return currentGroupKeys.some(function (groupKey) {
+      return groupKey === key;
+    });
+  });
 }
 
 function getRequestParams(req) {
