@@ -24,16 +24,7 @@ var commonLib = require('/lib/xp/common');
 
 var portalLib = require('/lib/xp/portal');
 
-var preconditions = require('/lib/preconditions'); // const regExp = /\$\{([^\}]+)\}/g;
-
-/*
-export function getUser({ userinfo }) {
-    const principalKey = getPrincipalKey({ userinfo });
-    return contextLib.runAsSu(() =>
-        authLib.getPrincipal(principalKey));
-}
-*/
-
+var preconditions = require('/lib/preconditions');
 
 function findUserBySub(uuid) {
   return contextLib.runAsSu(function () {
@@ -46,13 +37,6 @@ function getUserUuid(_ref) {
   var userinfo = _ref.userinfo;
   return commonLib.sanitize(preconditions.checkParameter(userinfo, 'sub'));
 }
-/*
-function getPrincipalKey({ userinfo }) {
-    const idProviderKey = portalLib.getIdProviderKey();
-    return 'user:' + idProviderKey + ':' + getUserUuid({ userinfo });
-}
-*/
-
 /***
  * Method to create new users that are validated.
  * Admin users will be mapped to their corresponding group and get added to those.
@@ -104,8 +88,6 @@ function createUser(claims, uuid) {
   });
   log.info('User [' + user.key + '] created');
   var defaultGroups = getDefaultGroups(isValidAdmin, accessMap);
-  log.info('User groups to be created');
-  log.info(JSON.stringify(defaultGroups, null, 4));
   contextLib.runAsSu(function () {
     defaultGroups.forEach(function (defaultGroup) {
       authLib.addMembers(defaultGroup, [user.key]);
@@ -189,57 +171,26 @@ function findUserGroups(memberShips) {
 }
 
 function login(claims, user) {
-  var userinfoClaims = claims.userinfo;
-  log.info('User info received:');
-  log.info(JSON.stringify(userinfoClaims, null, 4)); //  Updates the profile
-
+  //  Updates the profile
   var profile = contextLib.runAsSu(function () {
     return authLib.modifyProfile({
       key: user.key,
-      // getPrincipalKey(claims),
       scope: 'oidc',
       editor: function editor() {
         return claims;
       }
     });
-  });
-  log.info('Modified profile of [' + user.key + ']: ' + JSON.stringify(profile)); // Logs in the user
+  }); // Logs in the user
 
   var loginResult = authLib.login({
     user: user.login,
     idProvider: portalLib.getIdProviderKey(),
     skipAuth: true
   });
-  log.info('Login result');
-  log.info(JSON.stringify(loginResult, null, 4));
 
   if (loginResult.authenticated) {
     log.debug('Logged in user [' + user.key + ']');
   } else {
     throw 'Error while logging user [' + user.key + ']';
   }
-} // function toArray(object) {
-//     if (!object) {
-//         return [];
-//     }
-//     if (object.constructor === Array) {
-//         return object;
-//     }
-//     return [object];
-// }
-//
-// function getClaim(claims, claimKey) {
-//     const claimKeys = claimKey.split('.');
-//
-//     let currentClaimObject = claims;
-//     let claim;
-//     for (const claimKey of claimKeys) {
-//         currentClaimObject = currentClaimObject[claimKey];
-//         if (currentClaimObject == null) {
-//             log.warning('Claim [' + claimKey + '] missing');
-//             return '';
-//         }
-//         claim = currentClaimObject;
-//     }
-//     return claim || '';
-// }
+}

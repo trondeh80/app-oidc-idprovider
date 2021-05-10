@@ -57,9 +57,7 @@ function requestIDToken(params) {
     body: body,
     contentType: 'application/x-www-form-urlencoded'
   };
-  log.info('Sending token request: ' + JSON.stringify(request));
   var response = httpClient.request(request);
-  log.info('Received token response: ' + JSON.stringify(response));
 
   if (response.status !== 200) {
     throw 'Error ' + response.status + ' while retrieving the ID Token';

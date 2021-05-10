@@ -13,11 +13,9 @@ const token = {
 }
 export function getToken() {
     if (token.accessToken && ((new Date().getTime() - (1000 * 60 * 5)) < token.time)) {
-        log.info('Reusing token');
         return token.accessToken;
     }
 
-    log.info('Creating new token');
     const { body } = request(createAzureTokenRequest());
     const { access_token } = JSON.parse(body ?? '{}');
     token.accessToken = access_token;

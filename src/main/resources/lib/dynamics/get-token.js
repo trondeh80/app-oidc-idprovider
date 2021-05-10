@@ -23,11 +23,8 @@ var token = {
 
 function getToken() {
   if (token.accessToken && new Date().getTime() - 1000 * 60 * 5 < token.time) {
-    log.info('Reusing token');
     return token.accessToken;
   }
-
-  log.info('Creating new token');
 
   var _request = (0, _httpClient.request)(createAzureTokenRequest()),
       body = _request.body;

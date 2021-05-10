@@ -7,8 +7,8 @@ const NO_MEMBER_RESPONSE = 'Medlem ikke funnet';
 export function getDynamicsUser(uuid) {
     const url = createUrl(`/accounts/${uuid}?fullMemberDetail=true&memberDetail=true&membership=true&validMembership=true&title=true`); // eslint-disable-line
     const dynamicsRequest = createDynamicsRequest(url);
-    const { body } = request(dynamicsRequest);
-    if (!body || body === NO_MEMBER_RESPONSE) {
+    const { body, status } = request(dynamicsRequest);
+    if (status !== 200 || body === NO_MEMBER_RESPONSE) { // Adding the string comparison because of unstable API
         return null;
     }
     const { response = null } = JSON.parse(body) ?? {};

@@ -157,7 +157,7 @@ function handleAuthenticationResponse(req) {
     const user = loginLib.findUserBySub(uuid);
 
     if (!user) {
-        // no user found here. Lets validate :)
+        // no user found in database. Validate before creating the user
         cache.get(uuid, () => ({
             claims,
             idToken,
@@ -215,7 +215,7 @@ function completeLogin({
     }, true);
 
     if (!groupsAreSetCorrect) {
-        log.info('Groups were not set correct. Resetting.');
+        log.info('Groups were not set correct for openid: ' + uuid + '. Resetting.');
         const groups = currentGroupKeys.filter((groupKey) => /^group/i.test(groupKey));
         contextLib.runAsSu(() => {
             groups.forEach((groupKey) => {
@@ -236,19 +236,6 @@ function completeLogin({
         redirect: isValidAdmin ? context.originalUrl : '/'
     };
 }
-
-//
-// function handleIncomingVerifiedUser({ params: { oidcId, dynamicsId } }) {
-//     const userData = cache.get(oidcId, () => null); // fetch our temporary stored data from cache.
-//     if (!userData) {
-//         throw 'Session expired. User must start process from start';
-//     }
-//
-//     const { claims, idToken } = userData;
-//
-//     // Use dynamicsId to fetch user and its groups/rights
-//
-// }
 
 function getRequestParams(req) {
     const params = req.params;
@@ -326,7 +313,7 @@ function toArray(object) {
         return object;
     }
     return [object];
-};
+}
 
 exports.handle401 = redirectToAuthorizationEndpoint;
 exports.get = handleAuthenticationResponse;
