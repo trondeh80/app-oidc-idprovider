@@ -73,8 +73,8 @@ export function createUser(claims, uuid) {
     const defaultGroups = getDefaultGroups(isValidAdmin, accessMap);
     contextLib.runAsSu(() => {
         defaultGroups.forEach((defaultGroup) => {
+            log.info('Adding User [' + user.key + '] to group [' + defaultGroup + ']');
             authLib.addMembers(defaultGroup, [user.key]);
-            log.debug('User [' + user.key + '] added to group [' + defaultGroup + ']');
         });
     });
 
@@ -126,17 +126,21 @@ export function createAccessMap(uuid, titles = []) {
  */
 function findUserGroups(memberShips) {
     const providerKey = portalLib.getIdProviderKey();
-    return []
-        .concat(memberShips)
-        .map(({ internalID }) => {
-            const group = authLib.getPrincipal(`group:${providerKey}:${internalID}`);
-            if (!group) {
-                return null;
-            }
-            const { key } = group;
-            return key;
-        })
-        .filter((group) => !!group);
+    return contextLib.runAsSu(() => {
+        return []
+            .concat(memberShips)
+            .map(({ internalID }) => {
+                const principalKey = `group:${providerKey}:${internalID}`;
+                const group = authLib.getPrincipal(principalKey);
+                if (!group) {
+                    log.info('Principal with key ' + principalKey + ' not found');
+                    return null;
+                }
+                const { key } = group;
+                return key;
+            })
+            .filter((group) => !!group);
+    });
 }
 
 export function login(claims, user) {

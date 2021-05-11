@@ -174,9 +174,34 @@ function handleAuthenticationResponse(req) {
   var user = loginLib.findUserBySub(uuid);
 
   if (!user) {
-    // No user found in database.
-    // We need to redirect the user to columbus validation page
-    // Before we redirect we cache the authentication data received from our openID integration
+    return handleNonExistantUser({
+      uuid: uuid,
+      claims: claims,
+      idToken: idToken,
+      context: context
+    });
+  } // User exists, we need to validate the account using the dynamics API.
+
+
+  return completeLogin({
+    claims: claims,
+    idToken: idToken,
+    context: context,
+    user: user
+  });
+}
+
+function handleNonExistantUser(_ref2) {
+  var uuid = _ref2.uuid,
+      claims = _ref2.claims,
+      idToken = _ref2.idToken,
+      context = _ref2.context;
+  // No user found in database.
+  // If the user is not validated - we need to redirect the user to columbus validation page
+  // Before we redirect we cache the authentication data received from our openID integration
+  var dynamicsUser = (0, _getDynamicsUser.getDynamicsUser)(uuid);
+
+  if (!dynamicsUser) {
     _cache["default"].get(uuid, function () {
       return {
         claims: claims,
@@ -188,34 +213,43 @@ function handleAuthenticationResponse(req) {
     var returnUrl = generateRedirectUri({
       uuid: uuid,
       action: ACTIONS.AFTER_VERIFY
-    });
+    }); // Return the redirect to minside validation flow.
+
     return {
       redirect: "https://minside.njff.no/account/findrelation?id=".concat(uuid, "&redirect=").concat(encodeURIComponent(returnUrl))
     };
-  } // User exists, we need to validate the account using the dybamics API.
+  } // User is allready validated - continue to create user locally.
 
+
+  var _createUser2 = (0, _login.createUser)(claims, uuid),
+      user = _createUser2.user,
+      accessMap = _createUser2.accessMap,
+      isValidAdmin = _createUser2.isValidAdmin;
 
   return completeLogin({
     claims: claims,
     idToken: idToken,
     context: context,
-    user: user
+    user: user,
+    dynamicsUser: dynamicsUser,
+    accessMap: accessMap,
+    isValidAdmin: isValidAdmin
   });
 }
 
-function completeLogin(_ref2) {
+function completeLogin(_ref3) {
   var _dynamicsUser, _accessMap, _isValidAdmin;
 
-  var claims = _ref2.claims,
-      idToken = _ref2.idToken,
-      context = _ref2.context,
-      user = _ref2.user,
-      _ref2$dynamicsUser = _ref2.dynamicsUser,
-      dynamicsUser = _ref2$dynamicsUser === void 0 ? null : _ref2$dynamicsUser,
-      _ref2$accessMap = _ref2.accessMap,
-      accessMap = _ref2$accessMap === void 0 ? null : _ref2$accessMap,
-      _ref2$isValidAdmin = _ref2.isValidAdmin,
-      isValidAdmin = _ref2$isValidAdmin === void 0 ? null : _ref2$isValidAdmin;
+  var claims = _ref3.claims,
+      idToken = _ref3.idToken,
+      context = _ref3.context,
+      user = _ref3.user,
+      _ref3$dynamicsUser = _ref3.dynamicsUser,
+      dynamicsUser = _ref3$dynamicsUser === void 0 ? null : _ref3$dynamicsUser,
+      _ref3$accessMap = _ref3.accessMap,
+      accessMap = _ref3$accessMap === void 0 ? null : _ref3$accessMap,
+      _ref3$isValidAdmin = _ref3.isValidAdmin,
+      isValidAdmin = _ref3$isValidAdmin === void 0 ? null : _ref3$isValidAdmin;
   var uuid = loginLib.getUserUuid(claims);
   dynamicsUser = (_dynamicsUser = dynamicsUser) !== null && _dynamicsUser !== void 0 ? _dynamicsUser : (0, _getDynamicsUser.getDynamicsUser)(uuid);
 
@@ -235,8 +269,8 @@ function completeLogin(_ref2) {
 
 
   var defaultGroups = (0, _login.getDefaultGroups)(isValidAdmin, accessMap);
-  var currentGroupKeys = authLib.getMemberships(user.key).map(function (_ref3) {
-    var key = _ref3.key;
+  var currentGroupKeys = authLib.getMemberships(user.key).map(function (_ref4) {
+    var key = _ref4.key;
     return key;
   });
   var groupsAreSetCorrect = isUserGroupsCorrect(accessMap, currentGroupKeys, defaultGroups);
@@ -248,7 +282,7 @@ function completeLogin(_ref2) {
     });
     contextLib.runAsSu(function () {
       groups.forEach(function (groupKey) {
-        authLib.removeMembers(groupKey, [user.key]);
+        return authLib.removeMembers(groupKey, [user.key]);
       });
       defaultGroups.forEach(function (groupKey) {
         return authLib.addMembers(groupKey, [user.key]);
@@ -265,8 +299,8 @@ function completeLogin(_ref2) {
 }
 
 function isUserGroupsCorrect(accessMap, currentGroupKeys, defaultGroups) {
-  var accessGroups = accessMap.map(function (_ref4) {
-    var internalID = _ref4.internalID;
+  var accessGroups = accessMap.map(function (_ref5) {
+    var internalID = _ref5.internalID;
     return "group:".concat(portalLib.getIdProviderKey(), ":").concat(internalID);
   }).concat(defaultGroups);
   return accessGroups.every(function (key) {

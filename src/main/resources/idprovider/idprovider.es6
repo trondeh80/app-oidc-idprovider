@@ -151,12 +151,22 @@ function handleAuthenticationResponse(req) {
     log.debug('All claims: ' + JSON.stringify(claims));
 
     const uuid = loginLib.getUserUuid(claims);
-    const user = loginLib.findUserBySub(uuid);
+    let user = loginLib.findUserBySub(uuid);
 
     if (!user) {
-        // No user found in database.
-        // We need to redirect the user to columbus validation page
-        // Before we redirect we cache the authentication data received from our openID integration
+        return handleNonExistantUser({ uuid, claims, idToken, context });
+    }
+
+    // User exists, we need to validate the account using the dynamics API.
+    return completeLogin({ claims, idToken, context, user });
+}
+
+function handleNonExistantUser({ uuid, claims, idToken, context }) {
+    // No user found in database.
+    // If the user is not validated - we need to redirect the user to columbus validation page
+    // Before we redirect we cache the authentication data received from our openID integration
+    const dynamicsUser = getDynamicsUser(uuid);
+    if (!dynamicsUser) {
         cache.get(uuid, () => ({
             claims,
             idToken,
@@ -168,13 +178,23 @@ function handleAuthenticationResponse(req) {
             action: ACTIONS.AFTER_VERIFY
         });
 
+        // Return the redirect to minside validation flow.
         return {
             redirect: `https://minside.njff.no/account/findrelation?id=${uuid}&redirect=${encodeURIComponent(returnUrl)}`
         };
     }
 
-    // User exists, we need to validate the account using the dybamics API.
-    return completeLogin({ claims, idToken, context, user });
+    // User is allready validated - continue to create user locally.
+    const { user, accessMap, isValidAdmin } = createUser(claims, uuid);
+    return completeLogin({
+        claims,
+        idToken,
+        context,
+        user,
+        dynamicsUser,
+        accessMap,
+        isValidAdmin
+    });
 }
 
 function completeLogin({
@@ -234,8 +254,8 @@ function isUserGroupsCorrect(accessMap, currentGroupKeys, defaultGroups) {
         .concat(defaultGroups);
 
     return accessGroups.every((key) =>
-                currentGroupKeys.some((groupKey) =>
-                    groupKey === key));
+        currentGroupKeys.some((groupKey) =>
+            groupKey === key));
 }
 
 function getRequestParams(req) {
