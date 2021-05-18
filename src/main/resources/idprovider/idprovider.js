@@ -323,16 +323,19 @@ function getRequestParams(req) {
 }
 
 function logout(req) {
+  var _config$endSession, _config$endSession2, _config$endSession3, _config$endSession$ad, _config$endSession4, _config$endSession5;
+
   var idToken = requestLib.getIdToken();
   authLib.logout();
   var finalRedirectUrl = req.validTicket && req.params.redirect;
   var redirectUrl;
   var config = configLib.getIdProviderConfig();
+  var hasLogoutConfigured = (config === null || config === void 0 ? void 0 : (_config$endSession = config.endSession) === null || _config$endSession === void 0 ? void 0 : _config$endSession.idTokenHintKey) && idToken || finalRedirectUrl && (config === null || config === void 0 ? void 0 : (_config$endSession2 = config.endSession) === null || _config$endSession2 === void 0 ? void 0 : _config$endSession2.postLogoutRedirectUriKey) || (config === null || config === void 0 ? void 0 : (_config$endSession3 = config.endSession) === null || _config$endSession3 === void 0 ? void 0 : _config$endSession3.additionalParameters) && Object.keys((_config$endSession$ad = config === null || config === void 0 ? void 0 : (_config$endSession4 = config.endSession) === null || _config$endSession4 === void 0 ? void 0 : _config$endSession4.additionalParameters) !== null && _config$endSession$ad !== void 0 ? _config$endSession$ad : {}).length > 0;
 
-  if (config.endSession) {
+  if ((config === null || config === void 0 ? void 0 : (_config$endSession5 = config.endSession) === null || _config$endSession5 === void 0 ? void 0 : _config$endSession5.url) && hasLogoutConfigured) {
     redirectUrl = config.endSession.url;
 
-    if (config.endSession.idTokenHintKey && idToken || finalRedirectUrl && config.endSession.postLogoutRedirectUriKey || config.endSession.additionalParameters && Object.keys(config.endSession.additionalParameters).length > 0) {
+    if (hasLogoutConfigured) {
       redirectUrl += '?';
 
       if (config.endSession.idTokenHintKey && idToken) {

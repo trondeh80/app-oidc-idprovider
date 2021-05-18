@@ -280,10 +280,13 @@ function logout(req) {
 
     let redirectUrl;
     const config = configLib.getIdProviderConfig();
-    if (config.endSession) {
+    const hasLogoutConfigured = ((config?.endSession?.idTokenHintKey && idToken) || (finalRedirectUrl && config?.endSession?.postLogoutRedirectUriKey) ||
+        (config?.endSession?.additionalParameters && Object.keys(config?.endSession?.additionalParameters ?? {}).length > 0));
+
+    if (config?.endSession?.url && hasLogoutConfigured) {
         redirectUrl = config.endSession.url;
-        if ((config.endSession.idTokenHintKey && idToken) || (finalRedirectUrl && config.endSession.postLogoutRedirectUriKey) ||
-            (config.endSession.additionalParameters && Object.keys(config.endSession.additionalParameters).length > 0)) {
+
+        if (hasLogoutConfigured) {
             redirectUrl += '?';
 
             if (config.endSession.idTokenHintKey && idToken) {
