@@ -1,0 +1,27 @@
+{
+  "name": "app-oidc-idprovider",
+  "version": "1.0.0",
+  "description": "= Open ID Connect ID Provider",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "watch": "babel ./src/main/resources -x \".es6\" --out-dir ./src/main/resources -w"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/trondeh80/app-oidc-idprovider.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/trondeh80/app-oidc-idprovider/issues"
+  },
+  "homepage": "https://github.com/trondeh80/app-oidc-idprovider#readme",
+  "devDependencies": {
+    "@babel/cli": "^7.10.5",
+    "@babel/core": "^7.11.4",
+    "@babel/preset-env": "^7.11.0"
+  }
+}

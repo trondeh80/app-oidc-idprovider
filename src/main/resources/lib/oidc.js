@@ -1,107 +1,108 @@
-const preconditions = require('/lib/preconditions');
-const httpClient = require('/lib/http-client');
+"use strict";
+
+var preconditions = require('/lib/preconditions');
+
+var httpClient = require('/lib/http-client');
 
 function generateToken() {
-    return Java.type('com.enonic.app.oidcidprovider.OIDCUtils').generateToken();
+  return Java.type('com.enonic.app.oidcidprovider.OIDCUtils').generateToken();
 }
 
 function parseClaims(jwt, issuer, clientId, nonce) {
-    const parsedJwt = Java.type('com.enonic.app.oidcidprovider.OIDCUtils').parseClaims(jwt, issuer, clientId, nonce);
-    return __.toNativeObject(parsedJwt);
+  var parsedJwt = Java.type('com.enonic.app.oidcidprovider.OIDCUtils').parseClaims(jwt, issuer, clientId, nonce);
+  return __.toNativeObject(parsedJwt);
 }
 
 function generateAuthorizationUrl(params) {
-    const authorizationUrl = preconditions.checkParameter(params, 'authorizationUrl');
-    const clientId = preconditions.checkParameter(params, 'clientId');
-    const redirectUri = preconditions.checkParameter(params, 'redirectUri');
-    const scope = preconditions.checkParameter(params, 'scopes');
-    const state = preconditions.checkParameter(params, 'state');
-    const nonce = preconditions.checkParameter(params, 'nonce');
+  var authorizationUrl = preconditions.checkParameter(params, 'authorizationUrl');
+  var clientId = preconditions.checkParameter(params, 'clientId');
+  var redirectUri = preconditions.checkParameter(params, 'redirectUri');
+  var scope = preconditions.checkParameter(params, 'scopes');
+  var state = preconditions.checkParameter(params, 'state');
+  var nonce = preconditions.checkParameter(params, 'nonce'); //https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 
-    //https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
-    return authorizationUrl
-           + '?scope=' + encodeURIComponent(scope)
-           + '&response_type=code'
-           + '&client_id=' + encodeURIComponent(clientId)
-           + '&redirect_uri=' + encodeURIComponent(redirectUri)
-           + '&state=' + state
-           + '&nonce=' + nonce;
+  return authorizationUrl + '?scope=' + encodeURIComponent(scope) + '&response_type=code' + '&client_id=' + encodeURIComponent(clientId) + '&redirect_uri=' + encodeURIComponent(redirectUri) + '&state=' + state + '&nonce=' + nonce;
+}
+
+function getAuthentication(clientId, clientSecret) {
+  var authString = "".concat(clientId, ":").concat(clientSecret);
+  return Java.type('com.enonic.app.oidcidprovider.OIDCUtils').base64EncodeString(authString);
 }
 
 function requestIDToken(params) {
-    const issuer = preconditions.checkParameter(params, 'issuer');
-    const tokenUrl = preconditions.checkParameter(params, 'tokenUrl');
-    const clientId = preconditions.checkParameter(params, 'clientId');
-    const clientSecret = preconditions.checkParameter(params, 'clientSecret');
-    const redirectUri = preconditions.checkParameter(params, 'redirectUri');
-    const nonce = preconditions.checkParameter(params, 'nonce');
-    const code = preconditions.checkParameter(params, 'code');
-    //TODO Handle different authentication methods
+  var issuer = preconditions.checkParameter(params, 'issuer');
+  var tokenUrl = preconditions.checkParameter(params, 'tokenUrl');
+  var clientId = preconditions.checkParameter(params, 'clientId');
+  var clientSecret = preconditions.checkParameter(params, 'clientSecret');
+  var redirectUri = preconditions.checkParameter(params, 'redirectUri');
+  var nonce = preconditions.checkParameter(params, 'nonce');
+  var code = preconditions.checkParameter(params, 'code'); //TODO Handle different authentication methods
 
-    //https://openid.net/specs/openid-connect-core-1_0.html#TokenRequest
-    const body = 'grant_type=authorization_code'
-                 + '&code=' + code
-                 + '&redirect_uri=' + redirectUri
-                 + '&client_id=' + clientId
-                 + '&client_secret=' + clientSecret;
+  var isBasicAuth = true; // Todo add config option for switching auth method.
+  //https://openid.net/specs/openid-connect-core-1_0.html#TokenRequest
 
-    const request = {
-        url: tokenUrl,
-        method: 'POST',
-        // headers: {
-        //     //https://tools.ietf.org/html/rfc6749#section-2.3.1
-        // },
-        body: body,
-        contentType: 'application/x-www-form-urlencoded'
-    };
-    log.debug('Sending token request: ' + JSON.stringify(request));
+  var body = 'grant_type=authorization_code' + '&code=' + code + '&redirect_uri=' + redirectUri;
 
-    const response = httpClient.request(request);
-    log.debug('Received token response: ' + JSON.stringify(response));
+  if (isBasicAuth === false) {
+    body = body + '&client_id=' + clientId + '&client_secret=' + clientSecret;
+  }
 
-    if (response.status !== 200) {
-        throw 'Error ' + response.status + ' while retrieving the ID Token';
-    }
+  var headers = isBasicAuth ? {
+    Authorization: "Basic ".concat(getAuthentication(clientId, clientSecret))
+  } : {};
+  var request = {
+    url: tokenUrl,
+    method: 'POST',
+    headers: headers,
+    body: body,
+    contentType: 'application/x-www-form-urlencoded'
+  };
+  var response = httpClient.request(request);
 
-    const responseBody = JSON.parse(response.body);
+  if (response.status !== 200) {
+    throw 'Error ' + response.status + ' while retrieving the ID Token';
+  }
 
-    if (responseBody.error) {
-        throw 'Token error [' + params.error + ']' + (params.error_description ? ': ' + params.error_description : '');
-    }
+  var responseBody = JSON.parse(response.body);
 
-    const claims = parseClaims(responseBody.id_token, issuer, clientId, nonce);
-    log.debug('Parsed claims: ' + JSON.stringify(claims));
+  if (responseBody.error) {
+    throw 'Token error [' + params.error + ']' + (params.error_description ? ': ' + params.error_description : '');
+  }
 
-    return {
-        idToken: responseBody.id_token,
-        accessToken: responseBody.access_token,
-        claims: claims
-    };
+  var claims = parseClaims(responseBody.id_token, issuer, clientId, nonce);
+  log.debug('Parsed claims: ' + JSON.stringify(claims));
+  return {
+    idToken: responseBody.id_token,
+    accessToken: responseBody.access_token,
+    claims: claims
+  };
 }
 
 function requestOAuth2(params) {
-    const url = preconditions.checkParameter(params, 'url');
-    const accessToken = preconditions.checkParameter(params, 'accessToken');
-    const request = {
-        url: url,
-        headers: {
-            'Authorization': 'Bearer ' + accessToken
-        },
-        contentType: 'application/json'
-    };
-    log.debug('Sending user info request: ' + JSON.stringify(request));
-
-    const response = httpClient.request(request);
-    log.debug('Received user info response: ' + JSON.stringify(response));
-
-    return JSON.parse(response.body);
+  var url = preconditions.checkParameter(params, 'url');
+  var accessToken = preconditions.checkParameter(params, 'accessToken');
+  var request = {
+    url: url,
+    headers: {
+      'Authorization': 'Bearer ' + accessToken
+    },
+    contentType: 'application/json'
+  };
+  log.debug('Sending user info request: ' + JSON.stringify(request));
+  var response = httpClient.request(request);
+  log.debug('Received user info response: ' + JSON.stringify(response));
+  return JSON.parse(response.body);
 }
 
 function mergeClaims(priorityClaims, additionalClaims) {
-    const claims = {};
-    Object.keys(additionalClaims).forEach(claimKey => claims[claimKey] = additionalClaims[claimKey]);
-    Object.keys(priorityClaims).forEach(claimKey => claims[claimKey] = priorityClaims[claimKey]);
-    return claims;
+  var claims = {};
+  Object.keys(additionalClaims).forEach(function (claimKey) {
+    return claims[claimKey] = additionalClaims[claimKey];
+  });
+  Object.keys(priorityClaims).forEach(function (claimKey) {
+    return claims[claimKey] = priorityClaims[claimKey];
+  });
+  return claims;
 }
 
 exports.generateToken = generateToken;
