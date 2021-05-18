@@ -180,7 +180,7 @@ function handleNonExistantUser({ uuid, claims, idToken, context }) {
 
         // Return the redirect to minside validation flow.
         return {
-            redirect: `https://minside.njff.no/account/findrelation?id=${uuid}&redirect=${encodeURIComponent(returnUrl)}`
+            redirect: `https://minside.njff.no/account/findrelation?id=${uuid}&provider=1&redirect=${encodeURIComponent(returnUrl)}`
         };
     }
 
